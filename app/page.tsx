@@ -1,0 +1,41 @@
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import Link from 'next/link'
+
+export default async function Home() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (user) {
+    redirect('/dashboard')
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="max-w-md w-full text-center space-y-8">
+        <div>
+          <h1 className="text-4xl font-bold text-gray-900">
+            What am I Doing?
+          </h1>
+          <p className="mt-4 text-lg text-gray-600">
+            Organize and manage volunteer tasks for your events
+          </p>
+        </div>
+        <div className="flex flex-col gap-4">
+          <Link
+            href="/login"
+            className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            Sign In
+          </Link>
+          <Link
+            href="/signup"
+            className="w-full flex justify-center py-3 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            Create Account
+          </Link>
+        </div>
+      </div>
+    </div>
+  )
+}
