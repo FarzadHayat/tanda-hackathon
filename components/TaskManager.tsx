@@ -15,6 +15,7 @@ interface TaskManagerProps {
 export default function TaskManager({ eventId, event, taskTypes, initialTasks }: TaskManagerProps) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
   const [showForm, setShowForm] = useState(false)
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [startDate, setStartDate] = useState('')
@@ -27,6 +28,41 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
+
+  const resetForm = () => {
+    setName('')
+    setDescription('')
+    setStartDate('')
+    setStartTime('')
+    setEndDate('')
+    setEndTime('')
+    setVolunteersRequired(1)
+    setTaskTypeId('')
+    setEditingTaskId(null)
+    setShowForm(false)
+    setError(null)
+  }
+
+  const handleEdit = (task: Task) => {
+    // Parse datetime into date and time components
+    const startDT = new Date(task.start_datetime)
+    const endDT = new Date(task.end_datetime)
+
+    const formatDate = (date: Date) => date.toISOString().split('T')[0]
+    const formatTime = (date: Date) => date.toTimeString().slice(0, 5)
+
+    setName(task.name)
+    setDescription(task.description || '')
+    setStartDate(formatDate(startDT))
+    setStartTime(formatTime(startDT))
+    setEndDate(formatDate(endDT))
+    setEndTime(formatTime(endDT))
+    setVolunteersRequired(task.volunteers_required)
+    setTaskTypeId(task.task_type_id || '')
+    setEditingTaskId(task.id)
+    setShowForm(true)
+    setError(null)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -57,32 +93,42 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
       const startISO = new Date(startDatetime).toISOString()
       const endISO = new Date(endDatetime).toISOString()
 
-      const { data, error } = await supabase
-        .from('tasks')
-        .insert({
-          event_id: eventId,
-          task_type_id: taskTypeId || null,
-          name,
-          description,
-          start_datetime: startISO,
-          end_datetime: endISO,
-          volunteers_required: volunteersRequired,
-        })
-        .select()
-        .single()
+      const taskData = {
+        event_id: eventId,
+        task_type_id: taskTypeId || null,
+        name,
+        description,
+        start_datetime: startISO,
+        end_datetime: endISO,
+        volunteers_required: volunteersRequired,
+      }
 
-      if (error) throw error
+      if (editingTaskId) {
+        // Update existing task
+        const { data, error } = await supabase
+          .from('tasks')
+          .update(taskData)
+          .eq('id', editingTaskId)
+          .select()
+          .single()
 
-      setTasks([...tasks, data])
-      setName('')
-      setDescription('')
-      setStartDate('')
-      setStartTime('')
-      setEndDate('')
-      setEndTime('')
-      setVolunteersRequired(1)
-      setTaskTypeId('')
-      setShowForm(false)
+        if (error) throw error
+
+        setTasks(tasks.map(t => t.id === editingTaskId ? data : t))
+      } else {
+        // Create new task
+        const { data, error } = await supabase
+          .from('tasks')
+          .insert(taskData)
+          .select()
+          .single()
+
+        if (error) throw error
+
+        setTasks([...tasks, data])
+      }
+
+      resetForm()
       router.refresh()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An error occurred')
@@ -114,7 +160,7 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold text-gray-900">Tasks</h3>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => showForm ? resetForm() : setShowForm(true)}
           className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700"
         >
           {showForm ? 'Cancel' : 'Add Task'}
@@ -240,7 +286,7 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
               disabled={loading}
               className="w-full px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Creating...' : 'Create Task'}
+              {loading ? (editingTaskId ? 'Updating...' : 'Creating...') : (editingTaskId ? 'Update Task' : 'Create Task')}
             </button>
           </div>
         </form>
@@ -265,12 +311,20 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
                       <span className="text-xs text-gray-600">{taskType.name}</span>
                     )}
                   </div>
-                  <button
-                    onClick={() => handleDelete(task.id)}
-                    className="text-sm text-red-600 hover:text-red-800"
-                  >
-                    Delete
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEdit(task)}
+                      className="text-sm text-blue-600 hover:text-blue-800"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(task.id)}
+                      className="text-sm text-red-600 hover:text-red-800"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
                 {task.description && (
                   <p className="text-xs text-gray-600 mb-2">{task.description}</p>
