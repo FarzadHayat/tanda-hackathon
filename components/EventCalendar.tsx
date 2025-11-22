@@ -433,10 +433,10 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
     }
   }
 
-  // Calculate calendar structure (7-day weekly view starting at event start)
+  // Calculate calendar structure (showing all days from event start to end)
   const eventStart = startOfDay(new Date(event.start_date))
-  const weekEnd = addDays(eventStart, 6)
-  const days = eachDayOfInterval({ start: eventStart, end: weekEnd })
+  const eventEnd = startOfDay(new Date(event.end_date))
+  const days = eachDayOfInterval({ start: eventStart, end: eventEnd })
 
   // Get all hours (0-23)
   const hours = Array.from({ length: 24 }, (_, i) => i)
@@ -850,32 +850,38 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
                           >
                             <div
                               onClick={() => openEventModal(it)}
-                              className="h-full p-2 rounded shadow-sm text-xs cursor-pointer overflow-hidden border-2"
+                              className="h-full p-2 rounded shadow-sm text-xs cursor-pointer overflow-hidden border-2 flex items-start gap-2"
                               style={{
                                 backgroundColor: (it.task_type?.color || '#9CA3AF') + '20',
                                 borderColor: it.task_type?.color || '#9CA3AF'
                               }}
                             >
-                              <div className="flex items-start justify-between mb-1">
-                                <div className="font-medium text-gray-900 truncate flex-1">{it.tasks[0].name}</div>
-                                <div className="flex-shrink-0 ml-1">
-                                  {isAssigned ? (
-                                    <span className="inline-block w-2 h-2 rounded-full bg-blue-500" title="You're assigned"></span>
-                                  ) : isFull ? (
-                                    <span className="inline-block w-2 h-2 rounded-full bg-red-500" title="Full"></span>
-                                  ) : null}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between mb-1">
+                                  <div className="font-medium text-gray-900 truncate flex-1">{it.tasks[0].name}</div>
+                                  <div className="flex-shrink-0 ml-1">
+                                    {isAssigned ? (
+                                      <span className="inline-block w-2 h-2 rounded-full bg-blue-500" title="You're assigned"></span>
+                                    ) : isFull ? (
+                                      <span className="inline-block w-2 h-2 rounded-full bg-red-500" title="Full"></span>
+                                    ) : null}
+                                  </div>
                                 </div>
+                                <div className="text-gray-600 text-[11px]">{assignmentCount}/{it.volunteers_required} volunteers</div>
                               </div>
-                              {it.task_type && (
-                                <div className="text-gray-600 text-[10px] mb-1">{it.task_type.name}</div>
-                              )}
-                              <div className="text-gray-600 text-[11px]">{format(it.start, 'HH:mm')} - {format(it.end, 'HH:mm')}</div>
-                              <div className="text-gray-600 text-[11px]">{assignmentCount}/{it.volunteers_required} volunteers</div>
-                              <div className="mt-2 flex gap-2">
+                              <div className="flex-shrink-0">
                                 {findAssignmentTaskId(it) ? (
-                                  <button onClick={(e) => { e.stopPropagation(); handleUnassignTask(findAssignmentTaskId(it) as string) }} className="px-2 py-1 bg-red-500 text-white rounded text-xs">Unassign</button>
+                                  <button onClick={(e) => { e.stopPropagation(); handleUnassignTask(findAssignmentTaskId(it) as string) }} className="p-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors" title="Unassign">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                  </button>
                                 ) : (
-                                  <button onClick={(e) => { e.stopPropagation(); handleAssignTask(findAssignableTaskId(it) as string) }} disabled={isFull} className="px-2 py-1 bg-linear-to-r from-orange-500 to-purple-600 text-white rounded text-xs disabled:opacity-50">{isFull ? 'Full' : 'Assign'}</button>
+                                  <button onClick={(e) => { e.stopPropagation(); handleAssignTask(findAssignableTaskId(it) as string) }} disabled={isFull} className="p-1 bg-linear-to-r from-orange-500 to-purple-600 text-white rounded hover:from-orange-600 hover:to-purple-700 transition-colors disabled:opacity-50" title={isFull ? 'Task is full' : 'Assign me'}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                    </svg>
+                                  </button>
                                 )}
                               </div>
                             </div>
