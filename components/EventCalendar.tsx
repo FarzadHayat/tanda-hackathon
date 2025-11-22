@@ -31,6 +31,22 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
   const [error, setError] = useState<string | null>(null)
   const supabase = createClient()
   const bcRef = useRef<BroadcastChannel | null>(null)
+  const cursorChannelRef = useRef<any | null>(null)
+  const timelineWrapperRef = useRef<HTMLDivElement | null>(null)
+  const lastCursorSentRef = useRef<number>(0)
+
+  type CursorInfo = {
+    volunteerId: string
+    name: string
+    initials?: string
+    color?: string
+    leftPct: number
+    topPct: number
+    taskId?: string | null
+    lastSeen?: number
+  }
+
+  const [cursors, setCursors] = useState<Record<string, CursorInfo>>({})
   const broadChannelRef = useRef<any | null>(null)
   const filteredChannelRef = useRef<any | null>(null)
   const tasksRef = useRef<ExtendedTask[]>(initialTasks)
@@ -227,6 +243,148 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
       stopPoll()
     }
   }, [])
+
+  // Collaborative cursors: Supabase broadcast + BroadcastChannel fallback
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    // pick color deterministically
+    const pickColorForVolunteer = (id: string) => {
+      const colors = ['#FF6B6B', '#6BCB77', '#4D96FF', '#FFD166', '#845EC2', '#FF9671']
+      let h = 0
+      for (let i = 0; i < id.length; i++) h = (h << 5) - h + id.charCodeAt(i)
+      return colors[Math.abs(h) % colors.length]
+    }
+
+    const handleIncoming = (payload: any) => {
+      try {
+        const p = payload?.payload || payload
+        if (!p || !p.volunteerId) return
+        setCursors(prev => ({
+          ...prev,
+          [p.volunteerId]: {
+            volunteerId: p.volunteerId,
+            name: p.name || '',
+            initials: p.initials || (p.name || '').split(' ').map((s: string) => s[0]).join('').toUpperCase(),
+            color: p.color || pickColorForVolunteer(p.volunteerId),
+            leftPct: typeof p.leftPct === 'number' ? p.leftPct : 0,
+            topPct: typeof p.topPct === 'number' ? p.topPct : 0,
+            taskId: p.taskId || null,
+            lastSeen: Date.now()
+          }
+        }))
+      } catch (e) { }
+    }
+
+    // Supabase broadcast channel for cursors
+    try {
+      cursorChannelRef.current = supabase
+        .channel(`event_cursors_${event.id}`)
+        .on('broadcast', { event: 'cursor' }, (p: any) => handleIncoming(p))
+        .subscribe()
+    } catch (e) {
+      cursorChannelRef.current = null
+    }
+
+    // BroadcastChannel fallback for same-tab messaging
+    let localBc: BroadcastChannel | null = null
+    try {
+      localBc = new BroadcastChannel(`tanda_event_cursors_${event.id}`)
+      localBc.onmessage = (ev) => {
+        handleIncoming(ev.data)
+      }
+    } catch (e) {
+      localBc = null
+    }
+
+    // periodic prune of stale cursors (6s)
+    const PRUNE_MS = 6_000
+    const pruneInterval = window.setInterval(() => {
+      const now = Date.now()
+      setCursors(prev => {
+        const out: Record<string, any> = {}
+        Object.keys(prev).forEach(k => {
+          if ((prev[k].lastSeen || 0) + PRUNE_MS > now) out[k] = prev[k]
+        })
+        return out
+      })
+    }, 2000)
+
+    // attach pointer handlers to timeline wrapper
+    const el = timelineWrapperRef.current
+    const throttledSend = (ev: PointerEvent) => {
+      try {
+        if (!volunteerId) return
+        if (!el) return
+        const rect = el.getBoundingClientRect()
+        const leftPct = Math.max(0, Math.min(100, ((ev.clientX - rect.left) / rect.width) * 100))
+        const topPct = Math.max(0, Math.min(100, ((ev.clientY - rect.top) / rect.height) * 100))
+        const now = Date.now()
+        if (now - (lastCursorSentRef.current || 0) < 80) return
+        lastCursorSentRef.current = now
+
+        const payload = {
+          volunteerId,
+          name: volunteerName,
+          initials: (volunteerName || '').split(' ').map(s => s[0]).join('').toUpperCase(),
+          color: pickColorForVolunteer(volunteerId),
+          leftPct,
+          topPct,
+          taskId: null,
+          lastSeen: now
+        }
+
+        // send via supabase broadcast channel
+        try {
+          cursorChannelRef.current?.send?.({ type: 'broadcast', event: 'cursor', payload })
+        } catch (e) { }
+
+        // and via local BroadcastChannel
+        try { localBc?.postMessage(payload) } catch (e) { }
+
+        // also update our local view immediately
+        handleIncoming(payload)
+      } catch (e) { }
+    }
+
+    const handleLeave = (_ev: PointerEvent) => {
+      if (!volunteerId) return
+      // mark as left by setting lastSeen to 0 so it'll be pruned
+      setCursors(prev => {
+        const copy = { ...prev }
+        if (copy[volunteerId]) copy[volunteerId].lastSeen = 0
+        return copy
+      })
+      try {
+        const payload = { volunteerId, lastSeen: 0 }
+        cursorChannelRef.current?.send?.({ type: 'broadcast', event: 'cursor', payload })
+        localBc?.postMessage(payload)
+      } catch (e) { }
+    }
+
+    if (el) {
+      el.addEventListener('pointermove', throttledSend)
+      el.addEventListener('pointerdown', throttledSend)
+      ;(el as any).addEventListener('touchmove', throttledSend, { passive: true })
+      ;(el as any).addEventListener('touchstart', throttledSend, { passive: true })
+      el.addEventListener('pointerleave', handleLeave)
+      ;(el as any).addEventListener('touchend', handleLeave)
+    }
+
+    return () => {
+      try { if (cursorChannelRef.current) supabase.removeChannel(cursorChannelRef.current) } catch (e) { }
+      try { localBc?.close() } catch (e) { }
+      window.clearInterval(pruneInterval)
+      if (el) {
+        el.removeEventListener('pointermove', throttledSend)
+        el.removeEventListener('pointerdown', throttledSend)
+        ;(el as any).removeEventListener('touchmove', throttledSend)
+        ;(el as any).removeEventListener('touchstart', throttledSend)
+        el.removeEventListener('pointerleave', handleLeave)
+        ;(el as any).removeEventListener('touchend', handleLeave)
+      }
+    }
+  }, [event.id, supabase, volunteerId, volunteerName])
 
   const refreshTasks = async () => {
     const { data, error } = await supabase
@@ -762,8 +920,25 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
         )}
       </div>
 
+      {/* Collaborators strip (mobile-friendly) */}
+      <div className="mb-3">
+        <div className="flex items-center gap-2 overflow-x-auto py-2">
+          {Object.values(cursors).length === 0 ? (
+            <div className="text-xs text-gray-500 px-3">No collaborators online</div>
+          ) : (
+            Object.values(cursors).map((c) => (
+              <div key={c.volunteerId} className="flex items-center gap-2 px-2 py-1 bg-white/80 rounded-full shadow-sm mr-2">
+                <div style={{ background: c.color }} className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[12px] font-bold">{c.initials || (c.name||'').slice(0,2)}</div>
+                <div className="text-xs font-medium text-gray-700">{c.name}</div>
+                <div className="w-2 h-2 rounded-full bg-green-400 ml-1" />
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
       {/* Volunteers list (live) */}
-      <div className="mb-4">
+          <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
           <div className="text-sm text-gray-700 font-medium">Volunteers</div>
           <div className="text-xs text-gray-500">{volunteers.length} total</div>
@@ -797,7 +972,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
 
           {/* Days container */}
           <div className="flex-1 overflow-x-auto">
-            <div className="min-w-[700px]">
+            <div ref={timelineWrapperRef} className="md:min-w-[700px] min-w-0 relative">
               {/* Day headers */}
               <div className="flex border-b bg-gray-50">
                 {days.map((day) => (
@@ -892,6 +1067,21 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
                   )
                 })}
               </div>
+
+              {/* Cursor overlays */}
+              <div className="absolute inset-0 pointer-events-none">
+                {Object.values(cursors).map((c) => {
+                  if (!c || c.volunteerId === volunteerId) return null
+                  return (
+                    <div key={c.volunteerId} style={{ position: 'absolute', left: `${c.leftPct}%`, top: `${c.topPct}%`, transform: 'translate(-50%,-50%)' }} className="pointer-events-none">
+                      <div style={{ background: c.color, color: '#fff' }} className="flex items-center gap-2 px-2 py-1 rounded-full text-xs font-medium shadow">
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center bg-white/20 text-[11px] font-bold">{c.initials || c.name?.slice(0,2)}</div>
+                        <div className="hidden sm:block">{c.name}</div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           </div>
         </div>
@@ -900,8 +1090,8 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
 
       {/* Event Details Modal (overlay) */}
       {selectedItem && (
-        <div onClick={closeEventModal} className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg overflow-hidden max-w-2xl w-full max-h-[90vh] flex flex-col">
+        <div onClick={closeEventModal} className="fixed inset-0 bg-black bg-opacity-50 flex items-start sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div onClick={(e) => e.stopPropagation()} className="bg-white overflow-hidden w-full h-full sm:max-w-2xl sm:max-h-[90vh] sm:rounded-lg flex flex-col">
             {/* Themed header */}
             <div className="p-6 text-white" style={{ background: modalGradient }}>
               <div className="flex items-start justify-between">
