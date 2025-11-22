@@ -6,6 +6,7 @@ import { Event, TaskType, Task } from '@/lib/types/database'
 import TaskTypeManager from '@/components/TaskTypeManager'
 import TaskManager from '@/components/TaskManager'
 import EventHeader from '@/components/EventHeader'
+import VolunteerWorkloadChart from '@/components/VolunteerWorkloadChart'
 import { signOut } from '@/app/dashboard/actions'
 
 async function getEvent(eventId: string, userId: string) {
@@ -139,6 +140,10 @@ export default async function EventPage({
               taskTypes={taskTypes}
               initialTasks={tasks}
             />
+          </div>
+
+          <div className="mt-6">
+            <VolunteerWorkloadChart eventId={event.id} event={event} />
           </div>
         </div>
       </main>
