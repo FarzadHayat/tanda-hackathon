@@ -33,9 +33,12 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
   const bcRef = useRef<BroadcastChannel | null>(null)
   const broadChannelRef = useRef<any | null>(null)
   const filteredChannelRef = useRef<any | null>(null)
+  const tasksChannelRef = useRef<any | null>(null)
   const tasksRef = useRef<ExtendedTask[]>(initialTasks)
   const lastRealtimeRef = useRef<number>(0)
   const pollRef = useRef<number | null>(null)
+  const lastRefreshRef = useRef<number>(0)
+  const pendingRefreshRef = useRef<NodeJS.Timeout | null>(null)
 
   // Load volunteer from localStorage
   useEffect(() => {
@@ -47,12 +50,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
     }
   }, [event.id])
 
-  // Broad subscription: fallback subscription that listens for any changes
-  // on task_assignments and refreshes state when the changed record belongs
-  // to this event. We keep a ref to the channel so it's created once and
-  // cleaned up on unmount.
-  // Persistent broad subscription (created once) to catch any assignment
-  // changes and attempt to refresh when relevant. Cleaned up on unmount.
+  // Subscription for task_assignments changes (assign/unassign)
   useEffect(() => {
     const setup = () => {
       if (broadChannelRef.current) return
@@ -68,8 +66,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
               const changedTaskId = p.record?.task_id ?? p.new?.task_id ?? p.old?.task_id
               const hasTask = tasksRef.current?.some(t => t.id === changedTaskId)
               if (hasTask || !changedTaskId) {
-                refreshTasks()
-                refreshVolunteers()
+                throttledRefresh()
                 try { bcRef.current?.postMessage('refresh') } catch (e) { }
               }
             } catch (e) {
@@ -91,6 +88,51 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
       } catch (e) { }
     }
   }, [supabase, event.id])
+
+  // Subscription for tasks table changes (add/edit/delete tasks)
+  useEffect(() => {
+    const setup = () => {
+      if (tasksChannelRef.current) return
+      tasksChannelRef.current = supabase
+        .channel(`event_tasks_${event.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'tasks',
+            filter: `event_id=eq.${event.id}`
+          },
+          () => {
+            lastRealtimeRef.current = Date.now()
+            throttledRefresh()
+            try { bcRef.current?.postMessage('refresh') } catch (e) { }
+          }
+        )
+        .subscribe()
+    }
+
+    setup()
+
+    return () => {
+      try {
+        if (tasksChannelRef.current) {
+          supabase.removeChannel(tasksChannelRef.current)
+          tasksChannelRef.current = null
+        }
+      } catch (e) { }
+    }
+  }, [supabase, event.id])
+
+  // Cleanup pending refresh on unmount
+  useEffect(() => {
+    return () => {
+      if (pendingRefreshRef.current) {
+        clearTimeout(pendingRefreshRef.current)
+        pendingRefreshRef.current = null
+      }
+    }
+  }, [])
 
   // Filtered subscription that listens only to task_assignments for the
   // tasks currently displayed. This subscription is recreated whenever the
@@ -185,7 +227,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    const POLL_INTERVAL = 5_000 // 20s
+    const POLL_INTERVAL = 5_000 // 5s
     const QUIET_THRESHOLD = 30_000 // 30s without realtime
 
     const startPoll = () => {
@@ -227,6 +269,34 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
       stopPoll()
     }
   }, [])
+
+  // Throttled refresh with 1-second cooldown
+  const throttledRefresh = () => {
+    const now = Date.now()
+    const timeSinceLastRefresh = now - lastRefreshRef.current
+
+    // Clear any pending refresh
+    if (pendingRefreshRef.current) {
+      clearTimeout(pendingRefreshRef.current)
+      pendingRefreshRef.current = null
+    }
+
+    // If cooldown period has passed, refresh immediately
+    if (timeSinceLastRefresh >= 1000) {
+      lastRefreshRef.current = now
+      refreshTasks()
+      refreshVolunteers()
+    } else {
+      // Otherwise, schedule a refresh after cooldown completes
+      const timeToWait = 1000 - timeSinceLastRefresh
+      pendingRefreshRef.current = setTimeout(() => {
+        lastRefreshRef.current = Date.now()
+        refreshTasks()
+        refreshVolunteers()
+        pendingRefreshRef.current = null
+      }, timeToWait)
+    }
+  }
 
   const refreshTasks = async () => {
     const { data, error } = await supabase
