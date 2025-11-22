@@ -576,6 +576,24 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
 
   const closeEventModal = () => setSelectedItem(null)
 
+  // inside-modal selected task for per-task themed view
+  const [modalTask, setModalTask] = useState<ExtendedTask | null>(null)
+
+  // compute gradient for the currently selected task (or fallback to group first task)
+  const modalGradient = useMemo(() => {
+    const name = modalTask?.name || selectedItem?.tasks?.[0]?.name || ''
+    return getGradientForEvent(name)
+  }, [modalTask, selectedItem])
+
+  // when opening modal, default modalTask to first task in group
+  useEffect(() => {
+    if (selectedItem) {
+      setModalTask(selectedItem.tasks[0] || null)
+    } else {
+      setModalTask(null)
+    }
+  }, [selectedItem])
+
   // Helper: pick a task id within a grouped item for assigning/unassigning
   const findAssignableTaskId = (item: DayItem) => {
     // prefer a task that has capacity and is not assigned to current volunteer
@@ -732,20 +750,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
         )}
       </div>
 
-      {/* Event Header (themed by event name) */}
-      <div className="mb-4 rounded-lg overflow-hidden shadow-sm">
-        <div className="p-4 text-white" style={{ background: headerGradient }}>
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-bold">{event.name}</h2>
-              <div className="text-sm opacity-90">{new Date(event.start_date).toLocaleDateString()} — {new Date(event.end_date).toLocaleDateString()}</div>
-            </div>
-            <div className="text-sm opacity-90">{event.min_volunteer_hours}h min</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Volunteers list (live) */}
+      {/* Volunteers list (live) - moved to top for visibility */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
           <div className="text-sm text-gray-700 font-medium">Volunteers</div>
@@ -762,6 +767,19 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
               </div>
             )
           })}
+        </div>
+      </div>
+
+      {/* Event Header (themed by event name) */}
+      <div className="mb-4 rounded-lg overflow-hidden shadow-sm">
+        <div className="p-4 text-white" style={{ background: headerGradient }}>
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold">{event.name}</h2>
+              <div className="text-sm opacity-90">{new Date(event.start_date).toLocaleDateString()} — {new Date(event.end_date).toLocaleDateString()}</div>
+            </div>
+            <div className="text-sm opacity-90">{event.min_volunteer_hours}h min</div>
+          </div>
         </div>
       </div>
 
@@ -832,6 +850,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
                             }}
                           >
                             <div
+                              onClick={() => openEventModal(it)}
                               className="h-full p-2 rounded shadow-sm text-xs cursor-pointer overflow-hidden"
                               style={{
                                 backgroundColor: isAssigned ? '#DBEAFE' : isFull ? '#FEE2E2' : '#F9FAFB',
@@ -864,46 +883,108 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
 
               {/* Event Details Modal (overlay) */}
               {selectedItem && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                  <div className="bg-white rounded-lg p-6 max-w-3xl w-full mx-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-1">{selectedItem.tasks[0]?.name}</h3>
-                        <div className="text-sm text-gray-600">{format(selectedItem.start, 'eee, MMM d HH:mm')} — {format(selectedItem.end, 'eee, MMM d HH:mm')}</div>
-                        <div className="text-sm text-gray-600 mt-2">{selectedItem.assignment_count}/{selectedItem.volunteers_required} volunteers</div>
-                      </div>
-                      <div>
-                        <button onClick={closeEventModal} className="px-3 py-1 bg-gray-200 rounded">Close</button>
+                <div onClick={closeEventModal} className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg overflow-hidden max-w-3xl w-full mx-4">
+                    {/* Themed header based on selected task name */}
+                    <div className="p-4 text-white" style={{ background: modalGradient }}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-lg font-bold">{modalTask?.name || selectedItem.tasks[0]?.name}</h3>
+                          <div className="text-sm opacity-90">{format(selectedItem.start, 'eee, MMM d')} — {format(selectedItem.end, 'eee, MMM d')}</div>
+                        </div>
+                        <div className="text-sm opacity-90">{selectedItem.assignment_count}/{selectedItem.volunteers_required} volunteers</div>
                       </div>
                     </div>
 
-                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
+                    <div className="p-6 grid grid-cols-1 md:grid-cols-1 gap-4">
+                      {/* <div>
                         <h4 className="text-sm font-medium text-gray-700 mb-2">Tasks in this group</h4>
                         <div className="space-y-2 max-h-64 overflow-auto">
-                          {selectedItem.tasks.map(t => (
-                            <div key={t.id} className="p-2 border rounded">
-                              <div className="text-sm font-medium">{t.name}</div>
-                              <div className="text-xs text-gray-600">{new Date(t.start_datetime).toLocaleString()} — {new Date(t.end_datetime).toLocaleString()}</div>
-                              <div className="text-xs text-gray-600">Required: {t.volunteers_required} • Assigned: {t.task_assignments?.length || 0}</div>
-                              {t.task_assignments && t.task_assignments.length > 0 && (
-                                <div className="text-xs text-gray-700 mt-1">
-                                  <strong>Volunteers:</strong> {t.task_assignments.map(a => a.volunteer.name).join(', ')}
+                          {selectedItem.tasks.map(t => {
+                            const isActive = modalTask?.id === t.id
+                            return (
+                              <div key={t.id} onClick={() => setModalTask(t)} className={`p-3 border rounded cursor-pointer ${isActive ? 'ring-2 ring-offset-1 ring-indigo-400' : ''}`}>
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <div className="text-sm font-medium">{t.name}</div>
+                                    <div className="text-xs text-gray-600">{new Date(t.start_datetime).toLocaleString()} — {new Date(t.end_datetime).toLocaleString()}</div>
+                                  </div>
+                                  <div className="text-xs text-gray-600">{t.task_assignments?.length || 0}/{t.volunteers_required}</div>
                                 </div>
-                              )}
-                            </div>
-                          ))}
+                                {t.task_assignments && t.task_assignments.length > 0 && (
+                                  <div className="text-xs text-gray-700 mt-2">Volunteers: {t.task_assignments.map(a => a.volunteer.name).join(', ')}</div>
+                                )}
+                              </div>
+                            )
+                          })}
                         </div>
-                      </div>
+                      </div> */}
 
                       <div>
-                        <h4 className="text-sm font-medium text-gray-700 mb-2">Details</h4>
-                        <div className="text-sm text-gray-700">
-                          <div><strong>Group ID:</strong> {selectedItem.id}</div>
-                          <div className="mt-2"><strong>Task type:</strong> {selectedItem.task_type?.name || '—'}</div>
-                          <div className="mt-2"><strong>Duration:</strong> {((selectedItem.end.getTime() - selectedItem.start.getTime())/(1000*60)).toFixed(0)} minutes</div>
-                        </div>
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">Task Details</h4>
+                        {modalTask ? (
+                          <div className="p-4 border rounded">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                {/* <div className="text-lg font-semibold">{modalTask.name}</div> */}
+                                <div className="text-xs text-gray-600">{new Date(modalTask.start_datetime).toLocaleString()} — {new Date(modalTask.end_datetime).toLocaleString()}</div>
+                                <div className="text-xs text-gray-600 mt-2">Type: {modalTask.task_type?.name || '—'}</div>
+                                <div className="text-xs text-gray-600">Required: {modalTask.volunteers_required} • Assigned: {modalTask.task_assignments?.length || 0}</div>
+                                {modalTask.task_assignments && modalTask.task_assignments.length > 0 && (
+                                  <div className="text-xs text-gray-700 mt-2">Assigned: {modalTask.task_assignments.map(a => <li>{a.volunteer.name}</li>)}</div>
+                                )}
+                              </div>
+                              <div className="ml-4">
+                                {modalTask.task_assignments?.some(a => a.volunteer.id === volunteerId) ? (
+                                  <button onClick={(e) => { e.stopPropagation(); handleUnassignTask(modalTask.id) }} className="px-3 py-2 bg-red-500 text-white rounded">Unassign</button>
+                                ) : (
+                                  <button onClick={(e) => { e.stopPropagation(); handleAssignTask(modalTask.id) }} className="px-3 py-2 bg-linear-to-r from-orange-500 to-purple-600 text-white rounded">Assign</button>
+                                )}
+                              </div>
+                            </div>
+                            <div className="mt-3 text-sm text-gray-700">{modalTask.description || ''}</div>
+
+                            {/* Map preview if task includes an address or coordinates */}
+                            {(() => {
+                              const addr = (modalTask as any)?.location || (modalTask as any)?.address || (modalTask as any)?.venue
+                              const lat = (modalTask as any)?.lat || (modalTask as any)?.latitude || (modalTask as any)?.lng || (modalTask as any)?.longitude
+                              if (lat && typeof lat === 'number') {
+                                // if we have numeric lat/lng, render Google Maps embed with coordinates
+                                const lng = (modalTask as any)?.lng || (modalTask as any)?.longitude
+                                const src = `https://www.google.com/maps?q=${lat},${lng}&output=embed`
+                                return (
+                                  <div className="mt-4">
+                                    <div className="text-xs text-gray-600 mb-2">Location</div>
+                                    <div className="w-full h-48 rounded overflow-hidden border">
+                                      <iframe className="w-full h-full" src={src} />
+                                    </div>
+                                  </div>
+                                )
+                              }
+
+                              if (addr && typeof addr === 'string') {
+                                const src = `https://www.google.com/maps?q=${encodeURIComponent(addr)}&output=embed`
+                                return (
+                                  <div className="mt-4">
+                                    <div className="text-xs text-gray-600 mb-2">Location</div>
+                                    <div className="w-full h-48 rounded overflow-hidden border">
+                                      <iframe className="w-full h-full" src={src} />
+                                    </div>
+                                    <div className="mt-2 text-xs text-gray-500"><a className="underline" target="_blank" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`}>Open in Maps</a></div>
+                                  </div>
+                                )
+                              }
+
+                              return null
+                            })()}
+                          </div>
+                        ) : (
+                          <div className="p-4 text-sm text-gray-600">Select a task from the left to view details.</div>
+                        )}
                       </div>
+                    </div>
+                    <div className="p-4 border-t flex justify-end">
+                      <button onClick={closeEventModal} className="px-3 py-2 bg-gray-200 rounded">Close</button>
                     </div>
                   </div>
                 </div>

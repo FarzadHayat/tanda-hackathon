@@ -36,6 +36,7 @@ export interface Task {
   start_datetime: string
   end_datetime: string
   volunteers_required: number
+  location: string | null
   created_at: string
   updated_at: string
 }
