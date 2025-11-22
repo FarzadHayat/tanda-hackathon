@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Event, TaskType, Task, TaskAssignment, Volunteer } from '@/lib/types/database'
-import { eachDayOfInterval, eachHourOfInterval, format, startOfDay, endOfDay, isWithinInterval } from 'date-fns'
+import { eachDayOfInterval, eachHourOfInterval, format, startOfDay, endOfDay, isWithinInterval, addDays } from 'date-fns'
 
 interface ExtendedTask extends Task {
   task_type?: TaskType | null
@@ -239,10 +239,10 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
     }
   }
 
-  // Calculate calendar structure
-  const eventStart = new Date(event.start_date)
-  const eventEnd = new Date(event.end_date)
-  const days = eachDayOfInterval({ start: eventStart, end: eventEnd })
+  // Calculate calendar structure (7-day weekly view starting at event start)
+  const eventStart = startOfDay(new Date(event.start_date))
+  const weekEnd = addDays(eventStart, 6)
+  const days = eachDayOfInterval({ start: eventStart, end: weekEnd })
 
   // Get all hours (0-23)
   const hours = Array.from({ length: 24 }, (_, i) => i)
@@ -264,25 +264,110 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
     return true
   })
 
-  // Group tasks by day and hour
-  const getTasksForCell = (day: Date, hour: number) => {
-    const cellStart = new Date(day)
-    cellStart.setHours(hour, 0, 0, 0)
-    const cellEnd = new Date(day)
-    cellEnd.setHours(hour, 59, 59, 999)
+  // Helper: compute tasks/items for a given day with grouping and overlap column assignment
+  type DayItem = {
+    id: string
+    start: Date
+    end: Date
+    tasks: ExtendedTask[]
+    volunteers_required: number
+    assignment_count: number
+    task_type?: TaskType | null
+  }
 
-    return filteredTasks.filter(task => {
+  const getDayItems = (day: Date): DayItem[] => {
+    const dayStart = new Date(day)
+    dayStart.setHours(0, 0, 0, 0)
+    const dayEnd = new Date(day)
+    dayEnd.setHours(23, 59, 59, 999)
+
+    // tasks that intersect this day
+    const dayTasks = filteredTasks.filter(task => {
       const taskStart = new Date(task.start_datetime)
       const taskEnd = new Date(task.end_datetime)
-
-      // Task should only appear in this cell if it has actual time within this hour
-      // A task ending exactly at the start of an hour (e.g., 10:00-11:00) should not appear in the 11:00 hour
-      return (
-        (taskStart >= cellStart && taskStart <= cellEnd) ||
-        (taskEnd > cellStart && taskEnd <= cellEnd) ||
-        (taskStart < cellStart && taskEnd > cellEnd)
-      )
+      return taskStart <= dayEnd && taskEnd >= dayStart
     })
+
+    // groupKey: prefer explicit `group_id` if present, fall back to name
+    const groups = new Map<string, ExtendedTask[]>()
+    dayTasks.forEach(t => {
+      // @ts-ignore - some datasets may include a `group_id`
+      const groupKey = (t as any).group_id || t.name || t.id
+      if (!groups.has(groupKey)) groups.set(groupKey, [])
+      groups.get(groupKey)!.push(t)
+    })
+
+    const items: DayItem[] = []
+    groups.forEach((groupTasks, key) => {
+      // compute merged span inside this day
+      const start = new Date(Math.min(...groupTasks.map(t => new Date(t.start_datetime).getTime())))
+      const end = new Date(Math.max(...groupTasks.map(t => new Date(t.end_datetime).getTime())))
+      const volunteers_required = groupTasks.reduce((s, t) => s + (t.volunteers_required || 0), 0)
+      const assignment_count = groupTasks.reduce((s, t) => s + ((t.task_assignments?.length) || 0), 0)
+      const task_type = taskTypes.find(tt => tt.id === groupTasks[0].task_type_id) || null
+
+      // clip to day bounds
+      const clippedStart = start < dayStart ? dayStart : start
+      const clippedEnd = end > dayEnd ? dayEnd : end
+
+      items.push({ id: key, start: clippedStart, end: clippedEnd, tasks: groupTasks, volunteers_required, assignment_count, task_type })
+    })
+
+    // Assign columns to avoid overlaps using interval partitioning
+    // Sort by start time
+    items.sort((a, b) => a.start.getTime() - b.start.getTime())
+
+    // columns: array of end times
+    const columns: number[] = []
+    const positioned: DayItem[] & { _col?: number; _cols?: number }[] = []
+
+    items.forEach(item => {
+      const s = item.start.getTime()
+      const e = item.end.getTime()
+      // find first column that is free
+      let placed = false
+      for (let ci = 0; ci < columns.length; ci++) {
+        if (columns[ci] <= s) {
+          // place here
+          columns[ci] = e
+          ;(item as any)._col = ci
+          placed = true
+          break
+        }
+      }
+
+      if (!placed) {
+        columns.push(e)
+        ;(item as any)._col = columns.length - 1
+      }
+
+      positioned.push(item as any)
+    })
+
+    // annotate total columns count
+    positioned.forEach(p => (p as any)._cols = columns.length)
+
+    return positioned as DayItem[]
+  }
+
+  // Helper: pick a task id within a grouped item for assigning/unassigning
+  const findAssignableTaskId = (item: DayItem) => {
+    // prefer a task that has capacity and is not assigned to current volunteer
+    for (const t of item.tasks) {
+      const isAssigned = t.task_assignments?.some(a => a.volunteer.id === volunteerId)
+      const assignmentCount = t.task_assignments?.length || 0
+      if (!isAssigned && assignmentCount < t.volunteers_required) return t.id
+    }
+    // otherwise return first task id
+    return item.tasks[0]?.id
+  }
+
+  const findAssignmentTaskId = (item: DayItem) => {
+    for (const t of item.tasks) {
+      const assignment = t.task_assignments?.find(a => a.volunteer.id === volunteerId)
+      if (assignment) return t.id
+    }
+    return null
   }
 
   // Get unique volunteers
@@ -421,98 +506,99 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
         )}
       </div>
 
-      {/* Calendar View */}
+      {/* Weekly Timeline View */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="sticky left-0 z-10 bg-gray-50 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
-                  Time
-                </th>
-                {days.map((day) => (
-                  <th
-                    key={day.toISOString()}
-                    className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px]"
-                  >
-                    {format(day, 'EEE, MMM d')}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {hours.map((hour) => (
-                <tr key={hour}>
-                  <td className="sticky left-0 z-10 bg-white px-4 py-2 whitespace-nowrap text-sm text-gray-500 border-r border-gray-200">
-                    {format(new Date().setHours(hour, 0, 0, 0), 'HH:mm')}
-                  </td>
-                  {days.map((day) => {
-                    const cellTasks = getTasksForCell(day, hour)
-                    return (
-                      <td
-                        key={`${day.toISOString()}-${hour}`}
-                        className="px-2 py-2 align-top border-r border-gray-100 min-h-[80px]"
-                      >
-                        <div className="space-y-1">
-                          {cellTasks.map((task) => {
-                            const isAssigned = task.task_assignments?.some(
-                              a => a.volunteer.id === volunteerId
-                            )
-                            const assignmentCount = task.task_assignments?.length || 0
-                            const isFull = assignmentCount >= task.volunteers_required
-                            const taskType = taskTypes.find(tt => tt.id === task.task_type_id)
+        <div className="flex">
+          {/* Time Axis */}
+          <div className="w-16 border-r bg-gray-50 hidden sm:block">
+            <div className="h-12" />
+            {hours.map((h) => (
+              <div key={h} className="h-12 px-2 text-xs text-gray-500 flex items-start justify-end pr-2">
+                {format(new Date().setHours(h, 0, 0, 0), 'HH:mm')}
+              </div>
+            ))}
+          </div>
 
-                            return (
-                              <div
-                                key={task.id}
-                                className="p-2 rounded text-xs border-l-4 cursor-pointer hover:shadow-md transition-shadow"
-                                style={{
-                                  borderLeftColor: taskType?.color || '#9CA3AF',
-                                  backgroundColor: isAssigned ? '#DBEAFE' : isFull ? '#FEE2E2' : '#F9FAFB'
-                                }}
-                              >
-                                <div className="font-medium text-gray-900 mb-1">
-                                  {task.name}
-                                </div>
-                                <div className="text-gray-600 mb-1">
-                                  {format(new Date(task.start_datetime), 'HH:mm')} -{' '}
-                                  {format(new Date(task.end_datetime), 'HH:mm')}
-                                </div>
-                                <div className="text-gray-600 mb-1">
-                                  {assignmentCount}/{task.volunteers_required} volunteers
-                                </div>
-                                {task.task_assignments && task.task_assignments.length > 0 && (
-                                  <div className="text-gray-600 mb-2 text-xs">
-                                    {task.task_assignments.map(a => a.volunteer.name).join(', ')}
-                                  </div>
-                                )}
-                                {isAssigned ? (
-                                  <button
-                                    onClick={() => handleUnassignTask(task.id)}
-                                    className="w-full px-2 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600"
-                                  >
-                                    Unassign
-                                  </button>
+          {/* Days container */}
+          <div className="flex-1 overflow-x-auto">
+            <div className="min-w-[700px]">
+              {/* Day headers */}
+              <div className="flex border-b bg-gray-50">
+                {days.map((day) => (
+                  <div key={day.toISOString()} className="flex-1 min-w-[200px] px-3 py-3 text-center text-xs font-medium text-gray-600">
+                    {format(day, 'EEE, MMM d')}
+                  </div>
+                ))}
+              </div>
+
+              {/* Timeline grid */}
+              <div className="flex">
+                {days.map((day) => {
+                  const totalHeight = 24 * 48 // 48px per hour
+                  const dayStart = new Date(day)
+                  dayStart.setHours(0, 0, 0, 0)
+                  const items = getDayItems(day)
+
+                  return (
+                    <div key={day.toISOString()} className="relative flex-1 min-w-[200px] border-r border-gray-100" style={{ height: totalHeight }}>
+                      {/* hour grid lines */}
+                      {hours.map(h => (
+                        <div key={h} className="h-12 border-t border-gray-100" />
+                      ))}
+
+                      {/* Items */}
+                      {items.map((it: any) => {
+                        const startMinutes = (it.start.getTime() - dayStart.getTime()) / 60000
+                        const endMinutes = (it.end.getTime() - dayStart.getTime()) / 60000
+                        const top = (startMinutes / (24 * 60)) * totalHeight
+                        const height = Math.max(24, ((endMinutes - startMinutes) / (24 * 60)) * totalHeight)
+                        const col = it._col ?? 0
+                        const cols = it._cols ?? 1
+                        const leftPct = (col / cols) * 100
+                        const widthPct = 100 / cols
+                        const isAssigned = it.tasks.some((t: ExtendedTask) => t.task_assignments?.some(a => a.volunteer.id === volunteerId))
+                        const assignmentCount = it.assignment_count
+                        const isFull = it.tasks.every((t: ExtendedTask) => (t.task_assignments?.length || 0) >= t.volunteers_required)
+
+                        return (
+                          <div
+                            key={it.id}
+                            className="absolute px-1"
+                            style={{
+                              top,
+                              left: `${leftPct}%`,
+                              width: `calc(${widthPct}% - 6px)`,
+                              height,
+                              zIndex: 10
+                            }}
+                          >
+                            <div
+                              className="h-full p-2 rounded shadow-sm text-xs cursor-pointer overflow-hidden"
+                              style={{
+                                backgroundColor: isAssigned ? '#DBEAFE' : isFull ? '#FEE2E2' : '#F9FAFB',
+                                borderLeft: `4px solid ${it.task_type?.color || '#9CA3AF'}`
+                              }}
+                            >
+                              <div className="font-medium text-gray-900 truncate">{it.tasks[0].name}</div>
+                              <div className="text-gray-600 text-[11px]">{format(it.start, 'HH:mm')} - {format(it.end, 'HH:mm')}</div>
+                              <div className="text-gray-600 text-[11px]">{assignmentCount}/{it.volunteers_required} volunteers</div>
+                              <div className="mt-2 flex gap-2">
+                                {findAssignmentTaskId(it) ? (
+                                  <button onClick={() => handleUnassignTask(findAssignmentTaskId(it) as string)} className="px-2 py-1 bg-red-500 text-white rounded text-xs">Unassign</button>
                                 ) : (
-                                  <button
-                                    onClick={() => handleAssignTask(task.id)}
-                                    disabled={isFull}
-                                    className="w-full px-2 py-1 bg-linear-to-r from-orange-500 to-purple-600 text-white rounded text-xs hover:from-orange-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  >
-                                    {isFull ? 'Full' : 'Assign Me'}
-                                  </button>
+                                  <button onClick={() => handleAssignTask(findAssignableTaskId(it) as string)} disabled={isFull} className="px-2 py-1 bg-linear-to-r from-orange-500 to-purple-600 text-white rounded text-xs disabled:opacity-50">{isFull ? 'Full' : 'Assign'}</button>
                                 )}
                               </div>
-                            )
-                          })}
-                        </div>
-                      </td>
-                    )
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
