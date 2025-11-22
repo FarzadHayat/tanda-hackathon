@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Event, TaskType, Task, TaskAssignment, Volunteer } from '@/lib/types/database'
 import EventCalendar from '@/components/EventCalendar'
 import { redirect } from 'next/navigation'
+import Image from 'next/image'
 
 async function getEvent(eventId: string) {
   const supabase = await createClient()
@@ -80,7 +81,14 @@ export default async function PublicEventPage({
       <nav className="bg-linear-to-r from-orange-500 to-purple-600 shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
-            <div className="flex items-center">
+            <div className="flex items-center gap-3">
+              <Image
+                src="/logo.png"
+                alt="Logo"
+                width={40}
+                height={40}
+                className="rounded-lg"
+              />
               <h1 className="text-xl font-bold text-white">What am I Doing?</h1>
             </div>
           </div>

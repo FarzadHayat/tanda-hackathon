@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Event } from '@/lib/types/database'
 import { signOut } from './actions'
 
@@ -35,7 +36,14 @@ export default async function DashboardPage() {
       <nav className="bg-linear-to-r from-orange-500 to-purple-600 shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
-            <div className="flex items-center">
+            <div className="flex items-center gap-3">
+              <Image
+                src="/logo.png"
+                alt="Logo"
+                width={40}
+                height={40}
+                className="rounded-lg"
+              />
               <h1 className="text-xl font-bold text-white">What am I Doing?</h1>
             </div>
             <div className="flex items-center gap-4">
@@ -112,6 +120,22 @@ export default async function DashboardPage() {
                         <span className="font-medium">End:</span>
                         <span className="ml-1">{new Date(event.end_date).toLocaleDateString()}</span>
                       </div>
+                      <div className="flex items-center text-sm text-gray-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="font-medium">Min Hours:</span>
+                        <span className="ml-1">{event.min_volunteer_hours}h</span>
+                      </div>
+                      {event.max_volunteer_hours && (
+                        <div className="flex items-center text-sm text-gray-700">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                          <span className="font-medium">Max Hours:</span>
+                          <span className="ml-1">{event.max_volunteer_hours}h</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="absolute bottom-0 right-0 w-24 h-24 bg-linear-to-tl from-orange-50 to-transparent rounded-tl-full opacity-50 group-hover:opacity-100 transition-opacity"></div>

@@ -1,10 +1,12 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Event, TaskType, Task } from '@/lib/types/database'
 import TaskTypeManager from '@/components/TaskTypeManager'
 import TaskManager from '@/components/TaskManager'
 import CopyButton from '@/components/CopyButton'
+import { signOut } from '@/app/dashboard/actions'
 
 async function getEvent(eventId: string, userId: string) {
   const supabase = await createClient()
@@ -89,10 +91,28 @@ export default async function EventPage({
       <nav className="bg-linear-to-r from-orange-500 to-purple-600 shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
-            <div className="flex items-center">
+            <div className="flex items-center gap-3">
+              <Image
+                src="/logo.png"
+                alt="Logo"
+                width={40}
+                height={40}
+                className="rounded-lg"
+              />
               <Link href="/dashboard" className="text-xl font-bold text-white">
                 What am I Doing?
               </Link>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-white">{user.email}</span>
+              <form action={signOut}>
+                <button
+                  type="submit"
+                  className="text-sm text-white hover:text-gray-100"
+                >
+                  Sign Out
+                </button>
+              </form>
             </div>
           </div>
         </div>

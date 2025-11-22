@@ -76,67 +76,67 @@ export default function TaskTypeManager({ eventId, initialTaskTypes }: TaskTypeM
           Task Types
         </h3>
 
-      <form onSubmit={handleSubmit} className="mb-6">
-        {error && (
-          <div className="mb-4 rounded-md bg-red-50 p-4">
-            <div className="text-sm text-red-700">{error}</div>
-          </div>
-        )}
-
-        <div className="flex gap-2 items-center">
-          <input
-            type="text"
-            placeholder="Task type name"
-            required
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <input
-            type="color"
-            value={color}
-            onChange={(e) => setColor(e.target.value)}
-            className="w-16 h-10 px-1 border border-gray-300 rounded-md cursor-pointer"
-            title="Choose color"
-          />
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-4 py-2 bg-linear-to-r from-orange-500 to-purple-600 text-white text-sm rounded-md hover:from-orange-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Add
-          </button>
-        </div>
-      </form>
-
-      <div className="space-y-2">
-        {taskTypes.length === 0 ? (
-          <p className="text-sm text-gray-500">No task types yet</p>
-        ) : (
-          taskTypes.map((taskType) => (
-            <div
-              key={taskType.id}
-              className="flex items-center justify-between p-3 bg-white rounded-md shadow-sm border border-gray-200"
-            >
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-4 h-4 rounded"
-                  style={{ backgroundColor: taskType.color }}
-                />
-                <span className="text-sm font-medium text-gray-900">
-                  {taskType.name}
-                </span>
-              </div>
-              <button
-                onClick={() => handleDelete(taskType.id)}
-                className="text-sm text-red-600 hover:text-red-800"
-              >
-                Delete
-              </button>
+        <form onSubmit={handleSubmit} className="mb-6">
+          {error && (
+            <div className="mb-4 rounded-md bg-red-50 p-4">
+              <div className="text-sm text-red-700">{error}</div>
             </div>
-          ))
-        )}
-      </div>
+          )}
+
+          <div className="flex gap-2 items-center">
+            <input
+              type="text"
+              placeholder="Task type name"
+              required
+              className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-md text-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <input
+              type="color"
+              value={color}
+              onChange={(e) => setColor(e.target.value)}
+              className="w-16 h-10 border-2 border-gray-300 rounded-md cursor-pointer p-0"
+              title="Choose color"
+            />
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-4 py-2 bg-linear-to-r from-orange-500 to-purple-600 text-white text-sm rounded-md hover:from-orange-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Add
+            </button>
+          </div>
+        </form>
+
+        <div className="space-y-2">
+          {taskTypes.length === 0 ? (
+            <p className="text-sm text-gray-500">No task types yet</p>
+          ) : (
+            taskTypes.map((taskType) => (
+              <div
+                key={taskType.id}
+                className="flex items-center justify-between p-3 bg-white rounded-md shadow-sm border-2 border-gray-300"
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-4 h-4 rounded"
+                    style={{ backgroundColor: taskType.color }}
+                  />
+                  <span className="text-sm font-medium text-gray-900">
+                    {taskType.name}
+                  </span>
+                </div>
+                <button
+                  onClick={() => handleDelete(taskType.id)}
+                  className="text-sm text-red-600 hover:text-red-800"
+                >
+                  Delete
+                </button>
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </div>
   )
