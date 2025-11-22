@@ -13,6 +13,8 @@ export interface Event {
   description: string | null
   start_date: string
   end_date: string
+  min_volunteer_hours: number
+  max_volunteer_hours: number | null
   created_at: string
   updated_at: string
 }

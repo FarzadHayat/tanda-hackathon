@@ -10,6 +10,8 @@ export default function NewEventPage() {
   const [description, setDescription] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [minVolunteerHours, setMinVolunteerHours] = useState('0')
+  const [maxVolunteerHours, setMaxVolunteerHours] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
@@ -31,6 +33,13 @@ export default function NewEventPage() {
         throw new Error('End date must be after start date')
       }
 
+      const minHours = parseFloat(minVolunteerHours) || 0
+      const maxHours = maxVolunteerHours ? parseFloat(maxVolunteerHours) : null
+
+      if (maxHours !== null && minHours > maxHours) {
+        throw new Error('Minimum hours cannot exceed maximum hours')
+      }
+
       const { data, error } = await supabase
         .from('events')
         .insert({
@@ -39,6 +48,8 @@ export default function NewEventPage() {
           description,
           start_date: startDate,
           end_date: endDate,
+          min_volunteer_hours: minHours,
+          max_volunteer_hours: maxHours,
         })
         .select()
         .single()
@@ -160,6 +171,54 @@ export default function NewEventPage() {
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
                   />
+                </div>
+              </div>
+
+              <div className="border-t border-gray-200 pt-6 mt-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Volunteer Hour Limits</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label
+                      htmlFor="minHours"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Minimum Hours (Goal)
+                    </label>
+                    <input
+                      type="number"
+                      id="minHours"
+                      min="0"
+                      step="0.5"
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm"
+                      value={minVolunteerHours}
+                      onChange={(e) => setMinVolunteerHours(e.target.value)}
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Recommended hours for fair contribution
+                    </p>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="maxHours"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Maximum Hours (Hard Limit)
+                    </label>
+                    <input
+                      type="number"
+                      id="maxHours"
+                      min="0"
+                      step="0.5"
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm"
+                      value={maxVolunteerHours}
+                      onChange={(e) => setMaxVolunteerHours(e.target.value)}
+                      placeholder="No limit"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Prevents volunteers from exceeding this
+                    </p>
+                  </div>
                 </div>
               </div>
 
