@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default async function Home() {
   const supabase = await createClient()
@@ -14,6 +15,15 @@ export default async function Home() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full text-center space-y-8">
         <div>
+          <div className="flex justify-center mb-6">
+            <Image
+              src="/logo.png"
+              alt="What am I Doing Logo"
+              width={120}
+              height={120}
+              className="rounded-lg"
+            />
+          </div>
           <h1 className="text-4xl font-bold text-gray-900">
             What am I Doing?
           </h1>
