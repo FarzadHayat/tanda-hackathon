@@ -7,6 +7,7 @@ import TaskTypeManager from '@/components/TaskTypeManager'
 import TaskManager from '@/components/TaskManager'
 import EventHeader from '@/components/EventHeader'
 import VolunteerWorkloadChart from '@/components/VolunteerWorkloadChart'
+import TaskTypesPieChart from '@/components/TaskTypesPieChart'
 import { signOut } from '@/app/dashboard/actions'
 
 async function getEvent(eventId: string, userId: string) {
@@ -142,7 +143,13 @@ export default async function EventPage({
             />
           </div>
 
-          <div className="mt-6">
+          <div className="grid gap-6 lg:grid-cols-2 mt-6">
+            <TaskTypesPieChart
+              eventId={event.id}
+              event={event}
+              initialTaskTypes={taskTypes}
+              initialTasks={tasks}
+            />
             <VolunteerWorkloadChart eventId={event.id} event={event} />
           </div>
         </div>
