@@ -2,9 +2,11 @@
 
 import { useState } from 'react'
 import { format } from 'date-fns'
+import { useRouter } from 'next/navigation'
 import { Event } from '@/lib/types/database'
 import CopyButton from '@/components/CopyButton'
 import EditEventModal from '@/components/EditEventModal'
+import { createClient } from '@/lib/supabase/client'
 
 interface EventHeaderProps {
   event: Event
@@ -13,6 +15,29 @@ interface EventHeaderProps {
 
 export default function EventHeader({ event, eventUrl }: EventHeaderProps) {
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const router = useRouter()
+  const supabase = createClient()
+
+  const handleDelete = async () => {
+    setDeleting(true)
+    try {
+      const { error } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', event.id)
+
+      if (error) throw error
+
+      router.push('/dashboard')
+      router.refresh()
+    } catch (err) {
+      console.error('Error deleting event:', err)
+      alert('Failed to delete event')
+      setDeleting(false)
+    }
+  }
 
   return (
     <>

@@ -21,8 +21,6 @@ interface EventCalendarProps {
 
 export default function EventCalendar({ event, taskTypes, initialTasks }: EventCalendarProps) {
   const [tasks, setTasks] = useState<ExtendedTask[]>(initialTasks)
-  const [viewMode, setViewMode] = useState<'day' | 'week' | 'month' | 'agenda'>('day')
-  const [currentDate, setCurrentDate] = useState<Date>(startOfDay(new Date()))
   const [volunteerName, setVolunteerName] = useState<string>('')
   const [volunteerId, setVolunteerId] = useState<string | null>(null)
   const [showAuthModal, setShowAuthModal] = useState(false)
@@ -72,7 +70,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
               if (hasTask || !changedTaskId) {
                 refreshTasks()
                 refreshVolunteers()
-                try { bcRef.current?.postMessage('refresh') } catch (e) {}
+                try { bcRef.current?.postMessage('refresh') } catch (e) { }
               }
             } catch (e) {
               // defensive: ignore payload parsing errors
@@ -90,7 +88,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
           supabase.removeChannel(broadChannelRef.current)
           broadChannelRef.current = null
         }
-      } catch (e) {}
+      } catch (e) { }
     }
   }, [supabase, event.id])
 
@@ -111,7 +109,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
         supabase.removeChannel(filteredChannelRef.current)
         filteredChannelRef.current = null
       }
-    } catch (e) {}
+    } catch (e) { }
 
     if (idsArr.length === 0) return
 
@@ -124,7 +122,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
           lastRealtimeRef.current = Date.now()
           refreshTasks()
           refreshVolunteers()
-          try { bcRef.current?.postMessage('refresh') } catch (e) {}
+          try { bcRef.current?.postMessage('refresh') } catch (e) { }
         }
       )
       .subscribe()
@@ -135,7 +133,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
           supabase.removeChannel(filteredChannelRef.current)
           filteredChannelRef.current = null
         }
-      } catch (e) {}
+      } catch (e) { }
     }
   }, [JSON.stringify(tasks.map(t => t.id || '')), supabase, event.id])
 
@@ -177,7 +175,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
     }
 
     return () => {
-      try { bcRef.current?.close() } catch (e) {}
+      try { bcRef.current?.close() } catch (e) { }
       bcRef.current = null
     }
   }, [event.id])
@@ -395,8 +393,8 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
       await refreshTasks()
       try {
         await refreshVolunteers()
-      } catch {}
-      try { bcRef.current?.postMessage('refresh') } catch (e) {}
+      } catch { }
+      try { bcRef.current?.postMessage('refresh') } catch (e) { }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     }
@@ -428,17 +426,17 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
       await refreshTasks()
       try {
         await refreshVolunteers()
-      } catch {}
-      try { bcRef.current?.postMessage('refresh') } catch (e) {}
+      } catch { }
+      try { bcRef.current?.postMessage('refresh') } catch (e) { }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     }
   }
 
-  // Calculate calendar structure (7-day weekly view starting at event start)
+  // Calculate calendar structure (showing all days from event start to end)
   const eventStart = startOfDay(new Date(event.start_date))
-  const weekEnd = addDays(eventStart, 6)
-  const days = eachDayOfInterval({ start: eventStart, end: weekEnd })
+  const eventEnd = startOfDay(new Date(event.end_date))
+  const days = eachDayOfInterval({ start: eventStart, end: eventEnd })
 
   // Get all hours (0-23)
   const hours = Array.from({ length: 24 }, (_, i) => i)
@@ -526,7 +524,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
         if (columns[ci] <= s) {
           // place here
           columns[ci] = e
-          ;(item as any)._col = ci
+            ; (item as any)._col = ci
           placed = true
           break
         }
@@ -534,7 +532,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
 
       if (!placed) {
         columns.push(e)
-        ;(item as any)._col = columns.length - 1
+          ; (item as any)._col = columns.length - 1
       }
 
       positioned.push(item as any)
@@ -549,13 +547,13 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
   // Generate a simple gradient based on the event name so each event has a themed header
   const getGradientForEvent = (name: string) => {
     const palettes: Array<[string, string]> = [
-      ['#FFA07A', '#FF7F50'],
-      ['#FFDEE9', '#B5FFFC'],
-      ['#FBD786', '#f7797d'],
-      ['#A18CD1', '#FBC2EB'],
-      ['#84fab0', '#8fd3f4'],
-      ['#FCCF31', '#F55555'],
-      ['#43E97B', '#38F9D7']
+      ['#E85D04', '#DC2F02'],  // Deep orange to red
+      ['#6A4C93', '#8B5CF6'],  // Deep purple to violet
+      ['#0077B6', '#0096C7'],  // Deep blue
+      ['#2A9D8F', '#06A77D'],  // Deep teal to green
+      ['#C9184A', '#A4133C'],  // Deep rose to burgundy
+      ['#0B5E90', '#1E88E5'],  // Navy to bright blue
+      ['#D00000', '#9D0208']   // Deep red
     ]
     let hash = 0
     for (let i = 0; i < name.length; i++) {
@@ -627,6 +625,21 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
 
   return (
     <div>
+      {/* Event Header (themed by event name) */}
+      <div className="mb-4 rounded-lg overflow-hidden shadow-sm">
+        <div className="p-4 text-white" style={{ background: headerGradient }}>
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex-1">
+              <h2 className="text-lg font-bold">{event.name}</h2>
+              <div className="text-sm opacity-90">{new Date(event.start_date).toLocaleDateString()} — {new Date(event.end_date).toLocaleDateString()}</div>
+              {event.description && (
+                <div className="text-sm opacity-90 mt-2">{event.description}</div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Volunteer Auth Bar */}
       <div className="mb-6 bg-white rounded-lg shadow p-4">
         <div className="flex items-center justify-between flex-wrap gap-4">
@@ -665,29 +678,26 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
 
                 return (
                   <>
-                    <div className={`px-4 py-2 rounded-lg border-2 ${
-                      isAtMax ? 'bg-red-50 border-red-300' :
+                    <div className={`px-4 py-2 rounded-lg border-2 ${isAtMax ? 'bg-red-50 border-red-300' :
                       isNearMax ? 'bg-yellow-50 border-yellow-300' :
-                      isUnderMin ? 'bg-blue-50 border-blue-300' :
-                      'bg-green-50 border-green-300'
-                    }`}>
+                        isUnderMin ? 'bg-blue-50 border-blue-300' :
+                          'bg-green-50 border-green-300'
+                      }`}>
                       <div className="flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${
-                          isAtMax ? 'text-red-600' :
+                        <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${isAtMax ? 'text-red-600' :
                           isNearMax ? 'text-yellow-600' :
-                          isUnderMin ? 'text-blue-600' :
-                          'text-green-600'
-                        }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            isUnderMin ? 'text-blue-600' :
+                              'text-green-600'
+                          }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <div>
                           <p className="text-xs font-medium text-gray-600">Your Hours</p>
-                          <p className={`text-sm font-bold ${
-                            isAtMax ? 'text-red-700' :
+                          <p className={`text-sm font-bold ${isAtMax ? 'text-red-700' :
                             isNearMax ? 'text-yellow-700' :
-                            isUnderMin ? 'text-blue-700' :
-                            'text-green-700'
-                          }`}>
+                              isUnderMin ? 'text-blue-700' :
+                                'text-green-700'
+                            }`}>
                             {currentHours.toFixed(1)}h
                             {maxHours && ` / ${maxHours}h`}
                           </p>
@@ -752,7 +762,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
         )}
       </div>
 
-      {/* Volunteers list (live) - moved to top for visibility */}
+      {/* Volunteers list (live) */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
           <div className="text-sm text-gray-700 font-medium">Volunteers</div>
@@ -772,215 +782,277 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
         </div>
       </div>
 
-      {/* Event Header (themed by event name) */}
-      <div className="mb-4 rounded-lg overflow-hidden shadow-sm">
-        <div className="p-4 text-white" style={{ background: headerGradient }}>
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-bold">{event.name}</h2>
-              <div className="text-sm opacity-90">{new Date(event.start_date).toLocaleDateString()} — {new Date(event.end_date).toLocaleDateString()}</div>
-            </div>
-            <div className="text-sm opacity-90">{event.min_volunteer_hours}h min</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Day view controls */}
-      <div className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setCurrentDate(startOfDay(new Date()))} className="text-sm text-gray-700">Today</button>
-            <button onClick={() => setCurrentDate(prev => addDays(prev, -1))} className="text-sm text-gray-700">Back</button>
-            <button onClick={() => setCurrentDate(prev => addDays(prev, 1))} className="text-sm text-gray-700">Next</button>
-          </div>
-
-          <div className="text-sm font-semibold">{format(currentDate, 'EEEE MMM d')}</div>
-
-          <div className="flex items-center gap-2">
-            <button onClick={() => setViewMode('month')} className={`px-3 py-1 rounded text-sm ${viewMode==='month' ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-700'}`}>Month</button>
-            <button onClick={() => setViewMode('week')} className={`px-3 py-1 rounded text-sm ${viewMode==='week' ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-700'}`}>Week</button>
-            <button onClick={() => setViewMode('day')} className={`px-3 py-1 rounded text-sm ${viewMode==='day' ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-700'}`}>Day</button>
-            <button onClick={() => setViewMode('agenda')} className={`px-3 py-1 rounded text-sm ${viewMode==='agenda' ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-700'}`}>Agenda</button>
-          </div>
-        </div>
-
-        <div className="mt-4 flex">
-          <div className="w-24 border-r bg-gray-50 hidden sm:block">
+      {/* Weekly Timeline View */}
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="flex">
+          {/* Time Axis */}
+          <div className="w-16 border-r bg-gray-50 hidden sm:block">
             <div className="h-12" />
             {hours.map((h) => (
-              <div key={h} className="h-12 px-2 text-xs text-gray-500 flex items-start pr-2">
-                {format(new Date().setHours(h, 0, 0, 0), 'h:mm a')}
+              <div key={h} className="h-12 px-2 text-xs text-gray-500 flex items-start justify-end pr-2">
+                {format(new Date().setHours(h, 0, 0, 0), 'HH:mm')}
               </div>
             ))}
           </div>
 
-          <div className="flex-1 overflow-auto">
-            <div className="min-w-full p-4">
-              <div className="relative bg-white border rounded" style={{ minHeight: 24 * 48 }}>
-                {hours.map(h => (
-                  <div key={h} className="h-12 border-t border-gray-100" />
+          {/* Days container */}
+          <div className="flex-1 overflow-x-auto">
+            <div className="min-w-[700px]">
+              {/* Day headers */}
+              <div className="flex border-b bg-gray-50">
+                {days.map((day) => (
+                  <div key={day.toISOString()} className="flex-1 min-w-[200px] px-3 py-3 text-center text-xs font-medium text-gray-600">
+                    {format(day, 'EEE, MMM d')}
+                  </div>
                 ))}
+              </div>
 
-                {(() => {
-                  const day = startOfDay(currentDate)
+              {/* Timeline grid */}
+              <div className="flex">
+                {days.map((day) => {
+                  const totalHeight = 24 * 48 // 48px per hour
                   const dayStart = new Date(day)
-                  dayStart.setHours(0,0,0,0)
+                  dayStart.setHours(0, 0, 0, 0)
                   const items = getDayItems(day)
-                  const totalHeight = 24 * 48
 
-                  return items.map((it: any) => {
-                    const startMinutes = (it.start.getTime() - dayStart.getTime()) / 60000
-                    const endMinutes = (it.end.getTime() - dayStart.getTime()) / 60000
-                    const top = (startMinutes / (24 * 60)) * totalHeight
-                    const height = Math.max(24, ((endMinutes - startMinutes) / (24 * 60)) * totalHeight)
-                    const isAssigned = it.tasks.some((t: ExtendedTask) => t.task_assignments?.some(a => a.volunteer.id === volunteerId))
-                    const assignmentCount = it.assignment_count
-                    const isFull = it.tasks.every((t: ExtendedTask) => (t.task_assignments?.length || 0) >= t.volunteers_required)
+                  return (
+                    <div key={day.toISOString()} className="relative flex-1 min-w-[200px] border-r border-gray-100" style={{ height: totalHeight }}>
+                      {/* hour grid lines */}
+                      {hours.map(h => (
+                        <div key={h} className="h-12 border-t border-gray-100" />
+                      ))}
 
-                    // call findAssignmentTaskId once to satisfy the typechecker and avoid repeated calls
-                    const assignedTaskId = findAssignmentTaskId(it)
-                    const assignableTaskId = findAssignableTaskId(it)
+                      {/* Items */}
+                      {items.map((it: any) => {
+                        const startMinutes = (it.start.getTime() - dayStart.getTime()) / 60000
+                        const endMinutes = (it.end.getTime() - dayStart.getTime()) / 60000
+                        const top = (startMinutes / (24 * 60)) * totalHeight
+                        const height = Math.max(24, ((endMinutes - startMinutes) / (24 * 60)) * totalHeight)
+                        const col = it._col ?? 0
+                        const cols = it._cols ?? 1
+                        const leftPct = (col / cols) * 100
+                        const widthPct = 100 / cols
+                        const isAssigned = it.tasks.some((t: ExtendedTask) => t.task_assignments?.some(a => a.volunteer.id === volunteerId))
+                        const assignmentCount = it.assignment_count
+                        const isFull = it.tasks.every((t: ExtendedTask) => (t.task_assignments?.length || 0) >= t.volunteers_required)
 
-                    return (
-                      <div key={it.id} className="absolute left-0 right-0 px-3" style={{ top, height }}>
-                        <div onClick={() => openEventModal(it)} className="h-full p-3 rounded shadow-sm text-sm cursor-pointer overflow-hidden flex items-start justify-between" style={{ backgroundColor: isAssigned ? '#DBEAFE' : isFull ? '#FEE2E2' : '#F9FAFB', borderLeft: `4px solid ${it.task_type?.color || '#9CA3AF'}` }}>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium text-gray-900 truncate">{it.tasks[0].name}</div>
-                            <div className="text-gray-600 text-xs">{format(it.start, 'h:mm a')} — {format(it.end, 'h:mm a')}</div>
-                            <div className="text-xs text-gray-500">{assignmentCount}/{it.volunteers_required} volunteers</div>
+                        return (
+                          <div
+                            key={it.id}
+                            className="absolute px-1"
+                            style={{
+                              top,
+                              left: `${leftPct}%`,
+                              width: `calc(${widthPct}% - 6px)`,
+                              height,
+                              zIndex: 10
+                            }}
+                          >
+                            <div
+                              onClick={() => openEventModal(it)}
+                              className="h-full p-2 rounded shadow-sm text-xs cursor-pointer overflow-hidden border-2 flex items-start gap-2"
+                              style={{
+                                backgroundColor: (it.task_type?.color || '#9CA3AF') + '20',
+                                borderColor: it.task_type?.color || '#9CA3AF'
+                              }}
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between mb-1">
+                                  <div className="font-medium text-gray-900 truncate flex-1">{it.tasks[0].name}</div>
+                                  <div className="flex-shrink-0 ml-1">
+                                    {isAssigned ? (
+                                      <span className="inline-block w-2 h-2 rounded-full bg-blue-500" title="You're assigned"></span>
+                                    ) : isFull ? (
+                                      <span className="inline-block w-2 h-2 rounded-full bg-red-500" title="Full"></span>
+                                    ) : null}
+                                  </div>
+                                </div>
+                                <div className="text-gray-600 text-[11px]">{assignmentCount}/{it.volunteers_required} volunteers</div>
+                              </div>
+                              <div className="flex-shrink-0">
+                                {findAssignmentTaskId(it) ? (
+                                  <button onClick={(e) => { e.stopPropagation(); handleUnassignTask(findAssignmentTaskId(it) as string) }} className="p-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors" title="Unassign">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                  </button>
+                                ) : (
+                                  <button onClick={(e) => { e.stopPropagation(); handleAssignTask(findAssignableTaskId(it) as string) }} disabled={isFull} className="p-1 bg-linear-to-r from-orange-500 to-purple-600 text-white rounded hover:from-orange-600 hover:to-purple-700 transition-colors disabled:opacity-50" title={isFull ? 'Task is full' : 'Assign me'}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                    </svg>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex-shrink-0 ml-4">
-                            {assignedTaskId ? (
-                              <button onClick={(e) => { e.stopPropagation(); handleUnassignTask(assignedTaskId as string) }} className="px-2 py-1 bg-red-500 text-white rounded text-xs">Unassign</button>
-                            ) : (
-                              <button onClick={(e) => { e.stopPropagation(); assignableTaskId && handleAssignTask(assignableTaskId as string) }} disabled={isFull} className="px-2 py-1 bg-linear-to-r from-orange-500 to-purple-600 text-white rounded text-xs disabled:opacity-50">{isFull ? 'Full' : 'Assign'}</button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })
-                })()}
+                        )
+                      })}
+                    </div>
+                  )
+                })}
               </div>
             </div>
           </div>
         </div>
       </div>
-              {/* Event Details Modal (overlay) */}
-              {selectedItem ? (
-                <div onClick={closeEventModal} className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                  <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg overflow-hidden max-w-3xl w-full mx-4">
-                    {/* Themed header based on selected task name */}
-                    <div className="p-4 text-white" style={{ background: modalGradient }}>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="text-lg font-bold">{modalTask?.name || selectedItem.tasks[0]?.name}</h3>
-                          <div className="text-sm opacity-90">{format(selectedItem.start, 'eee, MMM d')} — {format(selectedItem.end, 'eee, MMM d')}</div>
-                        </div>
-                        <div className="text-sm opacity-90">{selectedItem.assignment_count}/{selectedItem.volunteers_required} volunteers</div>
+
+
+      {/* Event Details Modal (overlay) */}
+      {selectedItem && (
+        <div onClick={closeEventModal} className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg overflow-hidden max-w-2xl w-full max-h-[90vh] flex flex-col">
+            {/* Themed header */}
+            <div className="p-6 text-white" style={{ background: modalGradient }}>
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h3 className="text-2xl font-bold mb-2">{modalTask?.name || selectedItem.tasks[0]?.name}</h3>
+                  <div className="flex items-center gap-4 text-sm opacity-90">
+                    <div className="flex items-center gap-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      {format(selectedItem.start, 'MMM d, h:mm a')} - {format(selectedItem.end, 'h:mm a')}
+                    </div>
+                    {modalTask?.task_type && (
+                      <div className="flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                        </svg>
+                        {modalTask.task_type.name}
                       </div>
-                    </div>
-
-                    <div className="p-6 grid grid-cols-1 md:grid-cols-1 gap-4">
-                      {/* <div>
-                        <h4 className="text-sm font-medium text-gray-700 mb-2">Tasks in this group</h4>
-                        <div className="space-y-2 max-h-64 overflow-auto">
-                          {selectedItem.tasks.map(t => {
-                            const isActive = modalTask?.id === t.id
-                            return (
-                              <div key={t.id} onClick={() => setModalTask(t)} className={`p-3 border rounded cursor-pointer ${isActive ? 'ring-2 ring-offset-1 ring-indigo-400' : ''}`}>
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <div className="text-sm font-medium">{t.name}</div>
-                                    <div className="text-xs text-gray-600">{new Date(t.start_datetime).toLocaleString()} — {new Date(t.end_datetime).toLocaleString()}</div>
-                                  </div>
-                                  <div className="text-xs text-gray-600">{t.task_assignments?.length || 0}/{t.volunteers_required}</div>
-                                </div>
-                                {t.task_assignments && t.task_assignments.length > 0 && (
-                                  <div className="text-xs text-gray-700 mt-2">Volunteers: {t.task_assignments.map(a => a.volunteer.name).join(', ')}</div>
-                                )}
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div> */}
-
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-700 mb-2">Task Details</h4>
-                        {modalTask ? (
-                          <div className="p-4 border rounded">
-                            <div className="flex items-start justify-between">
-                              <div>
-                                {/* <div className="text-lg font-semibold">{modalTask.name}</div> */}
-                                <div className="text-xs text-gray-600">{new Date(modalTask.start_datetime).toLocaleString()} — {new Date(modalTask.end_datetime).toLocaleString()}</div>
-                                <div className="text-xs text-gray-600 mt-2">Type: {modalTask.task_type?.name || '—'}</div>
-                                <div className="text-xs text-gray-600">Required: {modalTask.volunteers_required} • Assigned: {modalTask.task_assignments?.length || 0}</div>
-                                {modalTask.task_assignments && modalTask.task_assignments.length > 0 && (
-                                  <div className="text-xs text-gray-700 mt-2">
-                                    <div className="text-xs font-medium mb-1">Assigned</div>
-                                    <ul className="list-disc list-inside">
-                                      {modalTask.task_assignments.map(a => (
-                                        <li key={a.id}>{a.volunteer.name}</li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                )}
-                              </div>
-                              <div className="ml-4">
-                                {modalTask.task_assignments?.some(a => a.volunteer.id === volunteerId) ? (
-                                  <button onClick={(e) => { e.stopPropagation(); handleUnassignTask(modalTask.id) }} className="px-3 py-2 bg-red-500 text-white rounded">Unassign</button>
-                                ) : (
-                                  <button onClick={(e) => { e.stopPropagation(); handleAssignTask(modalTask.id) }} className="px-3 py-2 bg-linear-to-r from-orange-500 to-purple-600 text-white rounded">Assign</button>
-                                )}
-                              </div>
-                            </div>
-                            <div className="mt-3 text-sm text-gray-700">{modalTask.description || ''}</div>
-
-                            {/* Map preview if task includes an address or coordinates */}
-                            {(() => {
-                              const addr = (modalTask as any)?.location || (modalTask as any)?.address || (modalTask as any)?.venue
-                              const lat = (modalTask as any)?.lat || (modalTask as any)?.latitude || (modalTask as any)?.lng || (modalTask as any)?.longitude
-                              if (lat && typeof lat === 'number') {
-                                // if we have numeric lat/lng, render Google Maps embed with coordinates
-                                const lng = (modalTask as any)?.lng || (modalTask as any)?.longitude
-                                const src = `https://www.google.com/maps?q=${lat},${lng}&output=embed`
-                                return (
-                                  <div className="mt-4">
-                                    <div className="text-xs text-gray-600 mb-2">Location</div>
-                                    <div className="w-full h-48 rounded overflow-hidden border">
-                                      <iframe className="w-full h-full" src={src} />
-                                    </div>
-                                  </div>
-                                )
-                              }
-
-                              if (addr && typeof addr === 'string') {
-                                const src = `https://www.google.com/maps?q=${encodeURIComponent(addr)}&output=embed`
-                                return (
-                                  <div className="mt-4">
-                                    <div className="text-xs text-gray-600 mb-2">Location</div>
-                                    <div className="w-full h-48 rounded overflow-hidden border">
-                                      <iframe className="w-full h-full" src={src} />
-                                    </div>
-                                    <div className="mt-2 text-xs text-gray-500"><a className="underline" target="_blank" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`}>Open in Maps</a></div>
-                                  </div>
-                                )
-                              }
-
-                              return null
-                            })()}
-                          </div>
-                        ) : (
-                          <div className="p-4 text-sm text-gray-600">Select a task from the left to view details.</div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="p-4 border-t flex justify-end">
-                      <button onClick={closeEventModal} className="px-3 py-2 bg-gray-200 rounded">Close</button>
-                    </div>
+                    )}
                   </div>
                 </div>
-              ) : null}
+                <button
+                  onClick={closeEventModal}
+                  className="ml-4 p-2 hover:bg-white hover:bg-opacity-20 rounded-full transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {modalTask ? (
+                <div className="space-y-6">
+                  {/* Description */}
+                  {modalTask.description && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2">Description</h4>
+                      <p className="text-sm text-gray-600">{modalTask.description}</p>
+                    </div>
+                  )}
+
+                  {/* Volunteers */}
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-700 mb-3">
+                      Volunteers ({modalTask.task_assignments?.length || 0}/{modalTask.volunteers_required})
+                    </h4>
+                    {modalTask.task_assignments && modalTask.task_assignments.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {modalTask.task_assignments.map((a, idx) => (
+                          <div key={idx} className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            <span className="text-sm font-medium text-gray-700">{a.volunteer.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 italic">No volunteers assigned yet</p>
+                    )}
+                  </div>
+
+                  {/* Location map */}
+                  {(() => {
+                    const addr = (modalTask as any)?.location || (modalTask as any)?.address || (modalTask as any)?.venue
+                    const lat = (modalTask as any)?.lat || (modalTask as any)?.latitude || (modalTask as any)?.lng || (modalTask as any)?.longitude
+                    if (lat && typeof lat === 'number') {
+                      const lng = (modalTask as any)?.lng || (modalTask as any)?.longitude
+                      const src = `https://www.google.com/maps?q=${lat},${lng}&output=embed`
+                      return (
+                        <div>
+                          <h4 className="text-sm font-semibold text-gray-700 mb-2">Location</h4>
+                          <div className="w-full h-48 rounded-lg overflow-hidden border border-gray-200">
+                            <iframe className="w-full h-full" src={src} />
+                          </div>
+                        </div>
+                      )
+                    }
+
+                    if (addr && typeof addr === 'string') {
+                      const src = `https://www.google.com/maps?q=${encodeURIComponent(addr)}&output=embed`
+                      return (
+                        <div>
+                          <h4 className="text-sm font-semibold text-gray-700 mb-2">Location</h4>
+                          <div className="w-full h-48 rounded-lg overflow-hidden border border-gray-200">
+                            <iframe className="w-full h-full" src={src} />
+                          </div>
+                          <a
+                            className="inline-flex items-center gap-1 mt-2 text-xs text-orange-600 hover:text-orange-700 font-medium"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                            Open in Google Maps
+                          </a>
+                        </div>
+                      )
+                    }
+
+                    return null
+                  })()}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  <p className="text-sm">Select a task to view details</p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer with action */}
+            <div className="p-4 border-t bg-gray-50 flex items-center justify-between">
+              <button
+                onClick={closeEventModal}
+                className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 font-medium"
+              >
+                Close
+              </button>
+              {modalTask && (
+                <div>
+                  {modalTask.task_assignments?.some(a => a.volunteer.id === volunteerId) ? (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleUnassignTask(modalTask.id) }}
+                      className="px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors"
+                    >
+                      Unassign Me
+                    </button>
+                  ) : (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleAssignTask(modalTask.id) }}
+                      disabled={(modalTask.task_assignments?.length || 0) >= modalTask.volunteers_required}
+                      className="px-6 py-2 bg-linear-to-r from-orange-500 to-purple-600 hover:from-orange-600 hover:to-purple-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {(modalTask.task_assignments?.length || 0) >= modalTask.volunteers_required ? 'Task Full' : 'Assign Me'}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       {/* Auth Modal */}
       {showAuthModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

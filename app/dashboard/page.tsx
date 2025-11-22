@@ -4,17 +4,18 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Event } from '@/lib/types/database'
 import { signOut } from './actions'
+import EventCard from '@/components/EventCard'
 
 // Utility to generate a simple gradient from the event name (server-safe)
 function getGradientForEvent(name: string) {
   const palettes: Array<[string, string]> = [
-    ['#FFA07A', '#FF7F50'],
-    ['#FFDEE9', '#B5FFFC'],
-    ['#FBD786', '#f7797d'],
-    ['#A18CD1', '#FBC2EB'],
-    ['#84fab0', '#8fd3f4'],
-    ['#FCCF31', '#F55555'],
-    ['#43E97B', '#38F9D7']
+    ['#E85D04', '#DC2F02'],  // Deep orange to red
+    ['#6A4C93', '#8B5CF6'],  // Deep purple to violet
+    ['#0077B6', '#0096C7'],  // Deep blue
+    ['#2A9D8F', '#06A77D'],  // Deep teal to green
+    ['#C9184A', '#A4133C'],  // Deep rose to burgundy
+    ['#0B5E90', '#1E88E5'],  // Navy to bright blue
+    ['#D00000', '#9D0208']   // Deep red
   ]
   let hash = 0
   for (let i = 0; i < name.length; i++) {
@@ -175,83 +176,11 @@ export default async function DashboardPage() {
             ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {events.map((event: any) => (
-                <Link
+                <EventCard
                   key={event.id}
-                  href={`/dashboard/events/${event.id}`}
-                  className="group relative block bg-gray-50 rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border-2 border-gray-200 hover:border-orange-300 overflow-hidden"
-                >
-                  <div style={{ background: getGradientForEvent(event.name || '') }} className="p-4 text-white">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-lg font-bold">{event.name}</h3>
-                        <div className="text-xs opacity-90">{new Date(event.start_date).toLocaleDateString()} — {new Date(event.end_date).toLocaleDateString()}</div>
-                      </div>
-                      <div className="text-sm opacity-90">{event.task_count} tasks</div>
-                    </div>
-                  </div>
-                  <div className="relative z-10 p-6">
-                    {event.description && (
-                      <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                        {event.description}
-                      </p>
-                    )}
-                    <div className="flex flex-col gap-3">
-                      <div className="flex items-center text-sm text-gray-700 justify-between">
-                        <div className="flex items-center">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                          <div>
-                            <div className="text-xs text-gray-500">Start</div>
-                            <div className="text-sm font-medium">{new Date(event.start_date).toLocaleDateString()}</div>
-                          </div>
-                        </div>
-                        <div className="flex items-center">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                          <div>
-                            <div className="text-xs text-gray-500">End</div>
-                            <div className="text-sm font-medium">{new Date(event.end_date).toLocaleDateString()}</div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-3 text-sm">
-                        <div className="p-3 bg-white rounded-md border border-gray-100 text-center">
-                          <div className="text-xs text-gray-500">Tasks</div>
-                          <div className="text-lg font-bold text-gray-900">{event.task_count}</div>
-                        </div>
-                        <div className="p-3 bg-white rounded-md border border-gray-100 text-center">
-                          <div className="text-xs text-gray-500">Volunteers</div>
-                          <div className="text-lg font-bold text-gray-900">{event.volunteers_count}</div>
-                        </div>
-                        <div className="p-3 bg-white rounded-md border border-gray-100 text-center">
-                          <div className="text-xs text-gray-500">Total Assigned Hours</div>
-                          <div className="text-lg font-bold text-gray-900">{event.total_assigned_hours.toFixed(1)}</div>
-                          <div className="text-xs text-gray-500">avg {event.avg_hours_per_volunteer.toFixed(1)} / vol</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center text-sm text-gray-700">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span className="font-medium">Min Hours:</span>
-                        <span className="ml-1">{event.min_volunteer_hours}h</span>
-                      </div>
-                      {event.max_volunteer_hours && (
-                        <div className="flex items-center text-sm text-gray-700">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                          </svg>
-                          <span className="font-medium">Max Hours:</span>
-                          <span className="ml-1">{event.max_volunteer_hours}h</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="absolute bottom-0 right-0 w-24 h-24 bg-linear-to-tl from-orange-50 to-transparent rounded-tl-full opacity-50 group-hover:opacity-100 transition-opacity"></div>
-                </Link>
+                  event={event}
+                  gradient={getGradientForEvent(event.name || '')}
+                />
               ))}
             </div>
           )}
