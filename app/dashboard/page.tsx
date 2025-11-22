@@ -32,18 +32,18 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow">
+      <nav className="bg-linear-to-r from-orange-500 to-purple-600 shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <h1 className="text-xl font-bold text-gray-900">What am I Doing?</h1>
+              <h1 className="text-xl font-bold text-white">What am I Doing?</h1>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-700">{user.email}</span>
+              <span className="text-sm text-white">{user.email}</span>
               <form action={signOut}>
                 <button
                   type="submit"
-                  className="text-sm text-gray-700 hover:text-gray-900"
+                  className="text-sm text-white hover:text-gray-100"
                 >
                   Sign Out
                 </button>
@@ -59,7 +59,7 @@ export default async function DashboardPage() {
             <h2 className="text-2xl font-bold text-gray-900">Your Events</h2>
             <Link
               href="/dashboard/events/new"
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-linear-to-r from-orange-500 to-purple-600 hover:from-orange-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
             >
               Create Event
             </Link>

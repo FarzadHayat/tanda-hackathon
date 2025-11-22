@@ -86,11 +86,11 @@ export default async function EventPage({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow">
+      <nav className="bg-linear-to-r from-orange-500 to-purple-600 shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <Link href="/dashboard" className="text-xl font-bold text-gray-900">
+              <Link href="/dashboard" className="text-xl font-bold text-white">
                 What am I Doing?
               </Link>
             </div>
@@ -103,7 +103,7 @@ export default async function EventPage({
           <div className="mb-6">
             <Link
               href="/dashboard"
-              className="text-sm text-blue-600 hover:text-blue-800"
+              className="text-sm text-orange-600 hover:text-orange-800"
             >
               &larr; Back to Dashboard
             </Link>
@@ -124,7 +124,7 @@ export default async function EventPage({
                 End: {new Date(event.end_date).toLocaleDateString()}
               </p>
             </div>
-            <div className="bg-blue-50 p-4 rounded-md">
+            <div className="bg-orange-50 p-4 rounded-md">
               <p className="text-sm font-medium text-gray-700 mb-2">
                 Share this link with volunteers:
               </p>

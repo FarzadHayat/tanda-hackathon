@@ -258,7 +258,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
                 </span>
                 <button
                   onClick={handleSignOut}
-                  className="text-sm text-blue-600 hover:text-blue-800"
+                  className="text-sm text-orange-600 hover:text-orange-800"
                 >
                   Sign Out
                 </button>
@@ -266,7 +266,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
             ) : (
               <button
                 onClick={() => setShowAuthModal(true)}
-                className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700"
+                className="px-4 py-2 bg-linear-to-r from-orange-500 to-purple-600 text-white text-sm rounded-md hover:from-orange-600 hover:to-purple-700"
               >
                 Sign In to Volunteer
               </button>
@@ -278,7 +278,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
             <select
               value={filterTaskType}
               onChange={(e) => setFilterTaskType(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
             >
               <option value="all">All Task Types</option>
               {taskTypes.map((tt) => (
@@ -291,7 +291,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
             <select
               value={filterVolunteer}
               onChange={(e) => setFilterVolunteer(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
             >
               <option value="all">All Tasks</option>
               <option value="unassigned">Unassigned</option>
@@ -383,7 +383,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
                                   <button
                                     onClick={() => handleAssignTask(task.id)}
                                     disabled={isFull}
-                                    className="w-full px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="w-full px-2 py-1 bg-linear-to-r from-orange-500 to-purple-600 text-white rounded text-xs hover:from-orange-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
                                   >
                                     {isFull ? 'Full' : 'Assign Me'}
                                   </button>
@@ -419,14 +419,14 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
                 type="text"
                 placeholder="Your name"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md mb-4 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md mb-4 focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                 value={volunteerName}
                 onChange={(e) => setVolunteerName(e.target.value)}
               />
               <div className="flex gap-2">
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  className="flex-1 px-4 py-2 bg-linear-to-r from-orange-500 to-purple-600 text-white rounded-md hover:from-orange-600 hover:to-purple-700"
                 >
                   Continue
                 </button>

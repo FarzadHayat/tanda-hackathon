@@ -161,7 +161,7 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
         <h3 className="text-lg font-semibold text-gray-900">Tasks</h3>
         <button
           onClick={() => showForm ? resetForm() : setShowForm(true)}
-          className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700"
+          className="px-4 py-2 bg-linear-to-r from-orange-500 to-purple-600 text-white text-sm rounded-md hover:from-orange-600 hover:to-purple-700"
         >
           {showForm ? 'Cancel' : 'Add Task'}
         </button>
@@ -183,7 +183,7 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
               <input
                 type="text"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
@@ -195,7 +195,7 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
               </label>
               <textarea
                 rows={2}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
@@ -208,7 +208,7 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
               <select
                 value={taskTypeId}
                 onChange={(e) => setTaskTypeId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
               >
                 <option value="">No type</option>
                 {taskTypes.map((tt) => (
@@ -228,7 +228,7 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
                   <input
                     type="date"
                     required
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
                   />
@@ -236,7 +236,7 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
                     type="time"
                     required
                     step="60"
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
                   />
@@ -251,7 +251,7 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
                   <input
                     type="date"
                     required
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
                   />
@@ -259,7 +259,7 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
                     type="time"
                     required
                     step="60"
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                     value={endTime}
                     onChange={(e) => setEndTime(e.target.value)}
                   />
@@ -275,7 +275,7 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
                 type="number"
                 min="1"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                 value={volunteersRequired}
                 onChange={(e) => setVolunteersRequired(parseInt(e.target.value))}
               />
@@ -284,7 +284,7 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
             <button
               type="submit"
               disabled={loading}
-              className="w-full px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full px-4 py-2 bg-linear-to-r from-orange-500 to-purple-600 text-white text-sm rounded-md hover:from-orange-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (editingTaskId ? 'Updating...' : 'Creating...') : (editingTaskId ? 'Update Task' : 'Create Task')}
             </button>
@@ -314,7 +314,7 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleEdit(task)}
-                      className="text-sm text-blue-600 hover:text-blue-800"
+                      className="text-sm text-orange-600 hover:text-orange-800"
                     >
                       Edit
                     </button>

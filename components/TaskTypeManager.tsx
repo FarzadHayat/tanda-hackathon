@@ -13,7 +13,7 @@ interface TaskTypeManagerProps {
 export default function TaskTypeManager({ eventId, initialTaskTypes }: TaskTypeManagerProps) {
   const [taskTypes, setTaskTypes] = useState<TaskType[]>(initialTaskTypes)
   const [name, setName] = useState('')
-  const [color, setColor] = useState('#3B82F6')
+  const [color, setColor] = useState('#F97316')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
@@ -39,7 +39,7 @@ export default function TaskTypeManager({ eventId, initialTaskTypes }: TaskTypeM
 
       setTaskTypes([...taskTypes, data])
       setName('')
-      setColor('#3B82F6')
+      setColor('#F97316')
       router.refresh()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An error occurred')
@@ -82,7 +82,7 @@ export default function TaskTypeManager({ eventId, initialTaskTypes }: TaskTypeM
             type="text"
             placeholder="Task type name"
             required
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
@@ -96,7 +96,7 @@ export default function TaskTypeManager({ eventId, initialTaskTypes }: TaskTypeM
           <button
             type="submit"
             disabled={loading}
-            className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-linear-to-r from-orange-500 to-purple-600 text-white text-sm rounded-md hover:from-orange-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Add
           </button>
