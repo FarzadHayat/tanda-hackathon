@@ -625,6 +625,21 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
 
   return (
     <div>
+      {/* Event Header (themed by event name) */}
+      <div className="mb-4 rounded-lg overflow-hidden shadow-sm">
+        <div className="p-4 text-white" style={{ background: headerGradient }}>
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex-1">
+              <h2 className="text-lg font-bold">{event.name}</h2>
+              <div className="text-sm opacity-90">{new Date(event.start_date).toLocaleDateString()} — {new Date(event.end_date).toLocaleDateString()}</div>
+              {event.description && (
+                <div className="text-sm opacity-90 mt-2">{event.description}</div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Volunteer Auth Bar */}
       <div className="mb-6 bg-white rounded-lg shadow p-4">
         <div className="flex items-center justify-between flex-wrap gap-4">
@@ -664,24 +679,24 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
                 return (
                   <>
                     <div className={`px-4 py-2 rounded-lg border-2 ${isAtMax ? 'bg-red-50 border-red-300' :
-                        isNearMax ? 'bg-yellow-50 border-yellow-300' :
-                          isUnderMin ? 'bg-blue-50 border-blue-300' :
-                            'bg-green-50 border-green-300'
+                      isNearMax ? 'bg-yellow-50 border-yellow-300' :
+                        isUnderMin ? 'bg-blue-50 border-blue-300' :
+                          'bg-green-50 border-green-300'
                       }`}>
                       <div className="flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${isAtMax ? 'text-red-600' :
-                            isNearMax ? 'text-yellow-600' :
-                              isUnderMin ? 'text-blue-600' :
-                                'text-green-600'
+                          isNearMax ? 'text-yellow-600' :
+                            isUnderMin ? 'text-blue-600' :
+                              'text-green-600'
                           }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <div>
                           <p className="text-xs font-medium text-gray-600">Your Hours</p>
                           <p className={`text-sm font-bold ${isAtMax ? 'text-red-700' :
-                              isNearMax ? 'text-yellow-700' :
-                                isUnderMin ? 'text-blue-700' :
-                                  'text-green-700'
+                            isNearMax ? 'text-yellow-700' :
+                              isUnderMin ? 'text-blue-700' :
+                                'text-green-700'
                             }`}>
                             {currentHours.toFixed(1)}h
                             {maxHours && ` / ${maxHours}h`}
@@ -747,18 +762,6 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
         )}
       </div>
 
-      {/* Event Header (themed by event name) */}
-      <div className="mb-4 rounded-lg overflow-hidden shadow-sm">
-        <div className="p-4 text-white" style={{ background: headerGradient }}>
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-bold">{event.name}</h2>
-              <div className="text-sm opacity-90">{new Date(event.start_date).toLocaleDateString()} — {new Date(event.end_date).toLocaleDateString()}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Volunteers list (live) */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
@@ -776,19 +779,6 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
               </div>
             )
           })}
-        </div>
-      </div>
-
-      {/* Event Header (themed by event name) */}
-      <div className="mb-4 rounded-lg overflow-hidden shadow-sm">
-        <div className="p-4 text-white" style={{ background: headerGradient }}>
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-bold">{event.name}</h2>
-              <div className="text-sm opacity-90">{new Date(event.start_date).toLocaleDateString()} — {new Date(event.end_date).toLocaleDateString()}</div>
-            </div>
-            <div className="text-sm opacity-90">{event.min_volunteer_hours}h min</div>
-          </div>
         </div>
       </div>
 
@@ -860,13 +850,25 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
                           >
                             <div
                               onClick={() => openEventModal(it)}
-                              className="h-full p-2 rounded shadow-sm text-xs cursor-pointer overflow-hidden"
+                              className="h-full p-2 rounded shadow-sm text-xs cursor-pointer overflow-hidden border-2"
                               style={{
-                                backgroundColor: isAssigned ? '#DBEAFE' : isFull ? '#FEE2E2' : '#F9FAFB',
-                                borderLeft: `4px solid ${it.task_type?.color || '#9CA3AF'}`
+                                backgroundColor: (it.task_type?.color || '#9CA3AF') + '20',
+                                borderColor: it.task_type?.color || '#9CA3AF'
                               }}
                             >
-                              <div className="font-medium text-gray-900 truncate">{it.tasks[0].name}</div>
+                              <div className="flex items-start justify-between mb-1">
+                                <div className="font-medium text-gray-900 truncate flex-1">{it.tasks[0].name}</div>
+                                <div className="flex-shrink-0 ml-1">
+                                  {isAssigned ? (
+                                    <span className="inline-block w-2 h-2 rounded-full bg-blue-500" title="You're assigned"></span>
+                                  ) : isFull ? (
+                                    <span className="inline-block w-2 h-2 rounded-full bg-red-500" title="Full"></span>
+                                  ) : null}
+                                </div>
+                              </div>
+                              {it.task_type && (
+                                <div className="text-gray-600 text-[10px] mb-1">{it.task_type.name}</div>
+                              )}
                               <div className="text-gray-600 text-[11px]">{format(it.start, 'HH:mm')} - {format(it.end, 'HH:mm')}</div>
                               <div className="text-gray-600 text-[11px]">{assignmentCount}/{it.volunteers_required} volunteers</div>
                               <div className="mt-2 flex gap-2">

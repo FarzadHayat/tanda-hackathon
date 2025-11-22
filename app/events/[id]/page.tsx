@@ -97,21 +97,6 @@ export default async function PublicEventPage({
 
       <main className="max-w-[1600px] mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          <div className="mb-6">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">
-              {event.name}
-            </h2>
-            {event.description && (
-              <p className="text-gray-600 mb-4">{event.description}</p>
-            )}
-            <div className="text-sm text-gray-500">
-              <p>
-                {new Date(event.start_date).toLocaleDateString()} -{' '}
-                {new Date(event.end_date).toLocaleDateString()}
-              </p>
-            </div>
-          </div>
-
           <EventCalendar
             event={event}
             taskTypes={taskTypes}
