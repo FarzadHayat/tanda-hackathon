@@ -34,6 +34,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
   const cursorChannelRef = useRef<any | null>(null)
   const timelineWrapperRef = useRef<HTMLDivElement | null>(null)
   const lastCursorSentRef = useRef<number>(0)
+  const lastLocalCursorRef = useRef<{ leftPct: number; topPct: number } | null>(null)
 
   type CursorInfo = {
     volunteerId: string
@@ -65,6 +66,8 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
       setVolunteerName(name)
     }
   }, [event.id])
+
+  // avatar upload removed — only keep name/id for volunteers
 
   // Subscription for task_assignments changes (assign/unassign)
   useEffect(() => {
@@ -312,7 +315,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
             leftPct: typeof p.leftPct === 'number' ? p.leftPct : 0,
             topPct: typeof p.topPct === 'number' ? p.topPct : 0,
             taskId: p.taskId || null,
-            lastSeen: Date.now()
+            lastSeen: typeof p.lastSeen === 'number' ? p.lastSeen : Date.now()
           }
         }))
       } catch (e) { }
@@ -352,15 +355,37 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
       })
     }, 2000)
 
-    // attach pointer handlers to timeline wrapper
+    // attach pointer & touch handlers to timeline wrapper
     const el = timelineWrapperRef.current
-    const throttledSend = (ev: PointerEvent) => {
+
+    const throttledSend = (ev: any) => {
       try {
         if (!volunteerId) return
         if (!el) return
+
+        // normalize coords for PointerEvent and TouchEvent
+        let clientX: number | undefined
+        let clientY: number | undefined
+
+        if (ev instanceof PointerEvent) {
+          clientX = ev.clientX
+          clientY = ev.clientY
+        } else if (ev.touches && ev.touches.length > 0) {
+          clientX = ev.touches[0].clientX
+          clientY = ev.touches[0].clientY
+        } else if (ev.changedTouches && ev.changedTouches.length > 0) {
+          clientX = ev.changedTouches[0].clientX
+          clientY = ev.changedTouches[0].clientY
+        } else if (typeof ev.clientX === 'number' && typeof ev.clientY === 'number') {
+          clientX = ev.clientX
+          clientY = ev.clientY
+        }
+
+        if (typeof clientX !== 'number' || typeof clientY !== 'number') return
+
         const rect = el.getBoundingClientRect()
-        const leftPct = Math.max(0, Math.min(100, ((ev.clientX - rect.left) / rect.width) * 100))
-        const topPct = Math.max(0, Math.min(100, ((ev.clientY - rect.top) / rect.height) * 100))
+        const leftPct = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100))
+        const topPct = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100))
         const now = Date.now()
         if (now - (lastCursorSentRef.current || 0) < 80) return
         lastCursorSentRef.current = now
@@ -384,21 +409,29 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
         // and via local BroadcastChannel
         try { localBc?.postMessage(payload) } catch (e) { }
 
-        // also update our local view immediately
+        // remember last local coords and update our local view immediately
+        try { lastLocalCursorRef.current = { leftPct, topPct } } catch (e) { }
         handleIncoming(payload)
       } catch (e) { }
     }
 
-    const handleLeave = (_ev: PointerEvent) => {
+    // handle pointer leave for mouse/pointer devices only.
+    const handlePointerLeave = (_ev: PointerEvent) => {
       if (!volunteerId) return
-      // mark as left by setting lastSeen to 0 so it'll be pruned
+      // mark as leaving but keep lastSeen as now so other clients keep the last point until prune
       setCursors(prev => {
         const copy = { ...prev }
-        if (copy[volunteerId]) copy[volunteerId].lastSeen = 0
+        if (copy[volunteerId]) copy[volunteerId].lastSeen = Date.now()
         return copy
       })
       try {
-        const payload = { volunteerId, lastSeen: 0 }
+        // include last known coords so other clients don't snap cursor to 0,0
+        const last = lastLocalCursorRef.current
+        const payload: any = { volunteerId, lastSeen: Date.now() }
+        if (last) {
+          payload.leftPct = last.leftPct
+          payload.topPct = last.topPct
+        }
         cursorChannelRef.current?.send?.({ type: 'broadcast', event: 'cursor', payload })
         localBc?.postMessage(payload)
       } catch (e) { }
@@ -409,8 +442,8 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
       el.addEventListener('pointerdown', throttledSend)
       ;(el as any).addEventListener('touchmove', throttledSend, { passive: true })
       ;(el as any).addEventListener('touchstart', throttledSend, { passive: true })
-      el.addEventListener('pointerleave', handleLeave)
-      ;(el as any).addEventListener('touchend', handleLeave)
+      el.addEventListener('pointerleave', handlePointerLeave)
+      // NOTE: do not clear cursor on touchend — keep it at last touch location until prune
     }
 
     return () => {
@@ -422,8 +455,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
         el.removeEventListener('pointerdown', throttledSend)
         ;(el as any).removeEventListener('touchmove', throttledSend)
         ;(el as any).removeEventListener('touchstart', throttledSend)
-        el.removeEventListener('pointerleave', handleLeave)
-        ;(el as any).removeEventListener('touchend', handleLeave)
+        el.removeEventListener('pointerleave', handlePointerLeave)
       }
     }
   }, [event.id, supabase, volunteerId, volunteerName])
@@ -525,8 +557,12 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
         volunteerId = newVolunteer.id
       }
 
-      setVolunteerId(volunteerId)
+      // If user selected an avatar file, upload it to Supabase Storage
+      // Save volunteer info (only id + name — avatar support removed)
       localStorage.setItem(`volunteer_${event.id}`, JSON.stringify({ id: volunteerId, name: volunteerName.trim() }))
+
+      setVolunteerId(volunteerId)
+      // ensure name stored
       // Ensure volunteers list updates immediately for this client
       try {
         await refreshVolunteers()
@@ -1017,7 +1053,8 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
             const assignedCount = tasks.reduce((s, t) => s + (t.task_assignments?.filter(a => a.volunteer.id === v.id).length || 0), 0)
             return (
               <div key={v.id} className="flex items-center gap-2 px-3 py-1 bg-gray-100 rounded-full text-xs text-gray-700">
-                <span className="h-2 w-2 rounded-full bg-green-400" />
+                {/* try to show avatar from storage if present */}
+                <div className="w-6 h-6 rounded-full flex items-center justify-center bg-gray-300 text-xs font-medium text-gray-700">{(v.name||'').split(' ').map((s:string)=>s[0]).slice(0,2).join('')}</div>
                 <span>{v.name}</span>
                 <span className="ml-2 text-[11px] text-gray-500">{assignedCount}</span>
               </div>
@@ -1143,10 +1180,12 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
                   if (!c || c.volunteerId === volunteerId) return null
                   return (
                     <div key={c.volunteerId} style={{ position: 'absolute', left: `${c.leftPct}%`, top: `${c.topPct}%`, transform: 'translate(-50%,-50%)' }} className="pointer-events-none">
-                      <div style={{ background: c.color, color: '#fff' }} className="flex items-center gap-2 px-2 py-1 rounded-full text-xs font-medium shadow">
-                        <div className="w-6 h-6 rounded-full flex items-center justify-center bg-white/20 text-[11px] font-bold">{c.initials || c.name?.slice(0,2)}</div>
-                        <div className="hidden sm:block">{c.name}</div>
-                      </div>
+                        <div style={{ background: c.color, color: '#fff' }} className="flex items-center gap-2 px-2 py-1 rounded-full text-xs font-medium shadow">
+                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold" style={{ background: '#ffffff22', color: '#fff' }}>
+                              <div style={{ background: c.color, width: 28, height: 28, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, fontWeight: 700 }}>{c.initials || c.name?.slice(0,2)}</div>
+                            </div>
+                          <div className="hidden sm:block">{c.name}</div>
+                        </div>
                     </div>
                   )
                 })}
@@ -1333,6 +1372,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
                 value={volunteerName}
                 onChange={(e) => setVolunteerName(e.target.value)}
               />
+              {/* profile photo removed — only name is required */}
               <div className="flex gap-2">
                 <button
                   type="submit"
