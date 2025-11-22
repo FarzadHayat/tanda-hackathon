@@ -119,7 +119,7 @@ export default async function EventPage({
               {event.description && (
                 <p className="text-gray-700 mb-6 text-lg">{event.description}</p>
               )}
-              <div className="flex gap-4 mb-6">
+              <div className="flex flex-wrap gap-4 mb-6">
                 <div className="flex items-center px-4 py-2 bg-linear-to-br from-orange-50 to-orange-100 rounded-lg border border-orange-200">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -138,6 +138,26 @@ export default async function EventPage({
                     <p className="text-sm font-bold text-purple-900">{new Date(event.end_date).toLocaleDateString()}</p>
                   </div>
                 </div>
+                <div className="flex items-center px-4 py-2 bg-linear-to-br from-green-50 to-green-100 rounded-lg border border-green-200">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <p className="text-xs text-green-700 font-medium">Min Hours Goal</p>
+                    <p className="text-sm font-bold text-green-900">{event.min_volunteer_hours}h</p>
+                  </div>
+                </div>
+                {event.max_volunteer_hours && (
+                  <div className="flex items-center px-4 py-2 bg-linear-to-br from-red-50 to-red-100 rounded-lg border border-red-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div>
+                      <p className="text-xs text-red-700 font-medium">Max Hours Limit</p>
+                      <p className="text-sm font-bold text-red-900">{event.max_volunteer_hours}h</p>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="bg-linear-to-br from-blue-50 to-blue-100 p-5 rounded-xl border-2 border-blue-200">
                 <div className="flex items-start gap-3">

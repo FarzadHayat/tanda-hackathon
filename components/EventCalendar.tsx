@@ -24,6 +24,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
   const [volunteerName, setVolunteerName] = useState<string>('')
   const [volunteerId, setVolunteerId] = useState<string | null>(null)
   const [showAuthModal, setShowAuthModal] = useState(false)
+  const [showErrorModal, setShowErrorModal] = useState(false)
   const [filterTaskType, setFilterTaskType] = useState<string>('all')
   const [filterVolunteer, setFilterVolunteer] = useState<string>('all')
   const [error, setError] = useState<string | null>(null)
@@ -91,23 +92,36 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
         throw new Error('Please enter your name')
       }
 
-      // Create or get volunteer
-      const { data, error } = await supabase
+      // First, check if volunteer already exists
+      const { data: existingVolunteer } = await supabase
         .from('volunteers')
-        .upsert({
-          event_id: event.id,
-          name: volunteerName.trim(),
-        }, {
-          onConflict: 'event_id,name',
-          ignoreDuplicates: false
-        })
-        .select()
-        .single()
+        .select('*')
+        .eq('event_id', event.id)
+        .eq('name', volunteerName.trim())
+        .maybeSingle()
 
-      if (error) throw error
+      let volunteerId: string
 
-      setVolunteerId(data.id)
-      localStorage.setItem(`volunteer_${event.id}`, JSON.stringify({ id: data.id, name: volunteerName.trim() }))
+      if (existingVolunteer) {
+        // Use existing volunteer
+        volunteerId = existingVolunteer.id
+      } else {
+        // Create new volunteer
+        const { data: newVolunteer, error } = await supabase
+          .from('volunteers')
+          .insert({
+            event_id: event.id,
+            name: volunteerName.trim(),
+          })
+          .select()
+          .single()
+
+        if (error) throw error
+        volunteerId = newVolunteer.id
+      }
+
+      setVolunteerId(volunteerId)
+      localStorage.setItem(`volunteer_${event.id}`, JSON.stringify({ id: volunteerId, name: volunteerName.trim() }))
       setShowAuthModal(false)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An error occurred')
@@ -118,6 +132,26 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
     setVolunteerId(null)
     setVolunteerName('')
     localStorage.removeItem(`volunteer_${event.id}`)
+  }
+
+  // Calculate volunteer's total hours
+  const calculateVolunteerHours = () => {
+    if (!volunteerId) return 0
+
+    let totalHours = 0
+    tasks.forEach(task => {
+      const isAssigned = task.task_assignments?.some(
+        a => a.volunteer.id === volunteerId
+      )
+      if (isAssigned) {
+        const start = new Date(task.start_datetime)
+        const end = new Date(task.end_datetime)
+        const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60)
+        totalHours += hours
+      }
+    })
+
+    return totalHours
   }
 
   const handleAssignTask = async (taskId: string) => {
@@ -145,6 +179,21 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
       const currentAssignments = task.task_assignments?.length || 0
       if (currentAssignments >= task.volunteers_required) {
         throw new Error('This task is already full')
+      }
+
+      // Check maximum hours limit
+      if (event.max_volunteer_hours) {
+        const currentHours = calculateVolunteerHours()
+        const taskStart = new Date(task.start_datetime)
+        const taskEnd = new Date(task.end_datetime)
+        const taskHours = (taskEnd.getTime() - taskStart.getTime()) / (1000 * 60 * 60)
+        const totalHoursAfter = currentHours + taskHours
+
+        if (totalHoursAfter > event.max_volunteer_hours) {
+          setError(`Adding this task would exceed your maximum hour limit of ${event.max_volunteer_hours}h (current: ${currentHours.toFixed(1)}h, task: ${taskHours.toFixed(1)}h)`)
+          setShowErrorModal(true)
+          return
+        }
       }
 
       const { error } = await supabase
@@ -249,7 +298,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
     <div>
       {/* Volunteer Auth Bar */}
       <div className="mb-6 bg-white rounded-lg shadow p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">
             {volunteerId ? (
               <>
@@ -272,6 +321,71 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
               </button>
             )}
           </div>
+
+          {volunteerId && (
+            <div className="flex items-center gap-3">
+              {(() => {
+                const currentHours = calculateVolunteerHours()
+                const minHours = event.min_volunteer_hours
+                const maxHours = event.max_volunteer_hours
+                const isUnderMin = currentHours < minHours
+                const isNearMax = maxHours && currentHours >= maxHours * 0.8
+                const isAtMax = maxHours && currentHours >= maxHours
+
+                return (
+                  <>
+                    <div className={`px-4 py-2 rounded-lg border-2 ${
+                      isAtMax ? 'bg-red-50 border-red-300' :
+                      isNearMax ? 'bg-yellow-50 border-yellow-300' :
+                      isUnderMin ? 'bg-blue-50 border-blue-300' :
+                      'bg-green-50 border-green-300'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${
+                          isAtMax ? 'text-red-600' :
+                          isNearMax ? 'text-yellow-600' :
+                          isUnderMin ? 'text-blue-600' :
+                          'text-green-600'
+                        }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div>
+                          <p className="text-xs font-medium text-gray-600">Your Hours</p>
+                          <p className={`text-sm font-bold ${
+                            isAtMax ? 'text-red-700' :
+                            isNearMax ? 'text-yellow-700' :
+                            isUnderMin ? 'text-blue-700' :
+                            'text-green-700'
+                          }`}>
+                            {currentHours.toFixed(1)}h
+                            {maxHours && ` / ${maxHours}h`}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {isUnderMin && (
+                      <div className="text-xs text-blue-600 bg-blue-50 px-3 py-2 rounded-md border border-blue-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Goal: {minHours}h
+                      </div>
+                    )}
+
+                    {isAtMax && (
+                      <div className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-md border border-red-200 font-medium">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        Maximum reached
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
+            </div>
+          )}
 
           {/* Filters */}
           <div className="flex items-center gap-4">
@@ -300,7 +414,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
           </div>
         </div>
 
-        {error && (
+        {error && !showErrorModal && (
           <div className="mt-4 rounded-md bg-red-50 p-4">
             <div className="text-sm text-red-700">{error}</div>
           </div>
@@ -410,7 +524,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
               Enter Your Name
             </h3>
             <form onSubmit={handleAuth}>
-              {error && (
+              {error && !showErrorModal && (
                 <div className="mb-4 rounded-md bg-red-50 p-4">
                   <div className="text-sm text-red-700">{error}</div>
                 </div>
@@ -439,6 +553,38 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Error Modal */}
+      {showErrorModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 border-4 border-red-500">
+            <div className="flex items-start mb-4">
+              <div className="flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div className="ml-3 flex-1">
+                <h3 className="text-lg font-bold text-red-900 mb-2">
+                  Maximum Hours Exceeded
+                </h3>
+                <p className="text-sm text-red-700">
+                  {error}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setShowErrorModal(false)
+                setError(null)
+              }}
+              className="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-medium"
+            >
+              OK
+            </button>
           </div>
         </div>
       )}
