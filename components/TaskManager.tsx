@@ -156,19 +156,25 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
   }
 
   return (
-    <div className="bg-white shadow rounded-lg p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Tasks</h3>
+    <div className="relative bg-gray-50 shadow-lg rounded-xl p-6 border-2 border-gray-200 overflow-hidden">
+      <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-purple-600 to-orange-500"></div>
+      <div className="absolute bottom-0 right-0 w-20 h-20 bg-linear-to-tl from-purple-50 to-transparent rounded-tl-full opacity-30"></div>
+      <div className="relative z-10">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-xl font-bold text-gray-900 flex items-center">
+            <div className="w-2 h-6 bg-linear-to-b from-purple-600 to-orange-500 rounded-full mr-3"></div>
+            Tasks
+          </h3>
         <button
           onClick={() => showForm ? resetForm() : setShowForm(true)}
           className="px-4 py-2 bg-linear-to-r from-orange-500 to-purple-600 text-white text-sm rounded-md hover:from-orange-600 hover:to-purple-700"
         >
           {showForm ? 'Cancel' : 'Add Task'}
-        </button>
-      </div>
+          </button>
+        </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="mb-6 p-4 bg-gray-50 rounded-md">
+        <form onSubmit={handleSubmit} className="mb-6 p-5 bg-white rounded-lg shadow-sm border border-gray-200">
           {error && (
             <div className="mb-4 rounded-md bg-red-50 p-4">
               <div className="text-sm text-red-700">{error}</div>
@@ -301,7 +307,7 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
             return (
               <div
                 key={task.id}
-                className="p-3 bg-gray-50 rounded-md border-l-4"
+                className="p-4 bg-white rounded-lg border-l-4 shadow-sm"
                 style={{ borderLeftColor: taskType?.color || '#9CA3AF' }}
               >
                 <div className="flex justify-between items-start mb-2">
@@ -340,6 +346,7 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
             )
           })
         )}
+      </div>
       </div>
     </div>
   )

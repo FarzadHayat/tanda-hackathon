@@ -79,10 +79,13 @@ export default function NewEventPage() {
             </Link>
           </div>
 
-          <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">
-              Create New Event
-            </h2>
+          <div className="relative bg-gray-50 shadow-lg rounded-xl p-6 border-2 border-gray-200 overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-2 bg-linear-to-r from-orange-500 to-purple-600"></div>
+            <div className="absolute bottom-0 right-0 w-32 h-32 bg-linear-to-tl from-orange-50 to-transparent rounded-tl-full opacity-30"></div>
+            <div className="relative z-10">
+              <h2 className="text-3xl font-bold mb-6 bg-linear-to-r from-orange-600 to-purple-600 bg-clip-text text-transparent">
+                Create New Event
+              </h2>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
@@ -176,6 +179,7 @@ export default function NewEventPage() {
                 </Link>
               </div>
             </form>
+            </div>
           </div>
         </div>
       </main>

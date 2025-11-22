@@ -67,8 +67,14 @@ export default function TaskTypeManager({ eventId, initialTaskTypes }: TaskTypeM
   }
 
   return (
-    <div className="bg-white shadow rounded-lg p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Task Types</h3>
+    <div className="relative bg-gray-50 shadow-lg rounded-xl p-6 border-2 border-gray-200 overflow-hidden">
+      <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-orange-500 to-purple-600"></div>
+      <div className="absolute bottom-0 right-0 w-20 h-20 bg-linear-to-tl from-orange-50 to-transparent rounded-tl-full opacity-30"></div>
+      <div className="relative z-10">
+        <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+          <div className="w-2 h-6 bg-linear-to-b from-orange-500 to-purple-600 rounded-full mr-3"></div>
+          Task Types
+        </h3>
 
       <form onSubmit={handleSubmit} className="mb-6">
         {error && (
@@ -110,7 +116,7 @@ export default function TaskTypeManager({ eventId, initialTaskTypes }: TaskTypeM
           taskTypes.map((taskType) => (
             <div
               key={taskType.id}
-              className="flex items-center justify-between p-3 bg-gray-50 rounded-md"
+              className="flex items-center justify-between p-3 bg-white rounded-md shadow-sm border border-gray-200"
             >
               <div className="flex items-center gap-3">
                 <div
@@ -130,6 +136,7 @@ export default function TaskTypeManager({ eventId, initialTaskTypes }: TaskTypeM
             </div>
           ))
         )}
+      </div>
       </div>
     </div>
   )
