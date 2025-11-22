@@ -40,8 +40,8 @@ export async function POST() {
       description: 'Annual technology conference featuring speakers, workshops, and networking events. Need help with registration, setup, and attendee support.',
       start_date: new Date(today.getFullYear(), today.getMonth() + 1, 15).toISOString().split('T')[0],
       end_date: new Date(today.getFullYear(), today.getMonth() + 1, 17).toISOString().split('T')[0],
-      min_volunteer_hours: 6,
-      max_volunteer_hours: 16
+      min_volunteer_hours: 3,
+      max_volunteer_hours: 5
     },
     {
       organizer_id: user.id,
