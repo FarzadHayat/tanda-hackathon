@@ -225,8 +225,8 @@ export default function TaskTypesPieChart({
                       strokeWidth="2"
                       className="hover:opacity-80 cursor-pointer transition-opacity"
                     >
-                      <title>
-                        {segment.taskTypeName}: {segment.taskCount} tasks ({segment.percentage.toFixed(1)}%)
+                      <title suppressHydrationWarning>
+                        {`${segment.taskTypeName}: ${segment.taskCount} tasks (${segment.percentage.toFixed(1)}%)`}
                       </title>
                     </path>
                   </g>

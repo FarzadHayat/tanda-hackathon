@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Event } from '@/lib/types/database'
 import CopyButton from '@/components/CopyButton'
 import EditEventModal from '@/components/EditEventModal'
+import QRCodeModal from '@/components/QRCodeModal'
 import { createClient } from '@/lib/supabase/client'
 
 interface EventHeaderProps {
@@ -16,6 +17,7 @@ interface EventHeaderProps {
 export default function EventHeader({ event, eventUrl }: EventHeaderProps) {
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showQRModal, setShowQRModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const router = useRouter()
   const supabase = createClient()
@@ -121,6 +123,16 @@ export default function EventHeader({ event, eventUrl }: EventHeaderProps) {
                     className="flex-1 px-3 py-2 border-2 border-blue-300 rounded-lg text-sm bg-gray-100 focus:outline-none focus:border-blue-500"
                   />
                   <CopyButton text={eventUrl} />
+                  <button
+                    onClick={() => setShowQRModal(true)}
+                    className="px-4 py-2 bg-linear-to-r from-orange-600 to-purple-700 text-white rounded-lg hover:from-orange-700 hover:to-purple-800 font-medium transition-all flex items-center gap-2"
+                    title="Show QR Code"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                    </svg>
+                    QR Code
+                  </button>
                 </div>
               </div>
             </div>
@@ -132,6 +144,13 @@ export default function EventHeader({ event, eventUrl }: EventHeaderProps) {
         event={event}
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
+      />
+
+      <QRCodeModal
+        isOpen={showQRModal}
+        onClose={() => setShowQRModal(false)}
+        url={eventUrl}
+        eventName={event.name}
       />
     </>
   )
