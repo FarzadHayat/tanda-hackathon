@@ -71,7 +71,12 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
     const startDT = new Date(task.start_datetime)
     const endDT = new Date(task.end_datetime)
 
-    const formatDate = (date: Date) => date.toISOString().split('T')[0]
+    const formatDate = (date: Date) => {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
     const formatTime = (date: Date) => date.toTimeString().slice(0, 5)
 
     setName(task.name)
@@ -105,9 +110,13 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
       // Validate task is within event date range
       const taskStart = new Date(startDatetime)
       const taskEnd = new Date(endDatetime)
-      const eventStart = new Date(event.start_date)
-      const eventEnd = new Date(event.end_date)
-      eventEnd.setHours(23, 59, 59, 999) // Set to end of day
+
+      // Parse event dates as local dates (not UTC) to match task datetime parsing
+      const [eventStartYear, eventStartMonth, eventStartDay] = event.start_date.split('-').map(Number)
+      const eventStart = new Date(eventStartYear, eventStartMonth - 1, eventStartDay, 0, 0, 0, 0)
+
+      const [eventEndYear, eventEndMonth, eventEndDay] = event.end_date.split('-').map(Number)
+      const eventEnd = new Date(eventEndYear, eventEndMonth - 1, eventEndDay, 23, 59, 59, 999)
 
       if (taskStart < eventStart || taskEnd > eventEnd) {
         throw new Error('Task must be within event date range')
