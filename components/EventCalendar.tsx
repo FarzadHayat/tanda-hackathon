@@ -21,6 +21,8 @@ interface EventCalendarProps {
 
 export default function EventCalendar({ event, taskTypes, initialTasks }: EventCalendarProps) {
   const [tasks, setTasks] = useState<ExtendedTask[]>(initialTasks)
+  const [viewMode, setViewMode] = useState<'day' | 'week' | 'month' | 'agenda'>('day')
+  const [currentDate, setCurrentDate] = useState<Date>(startOfDay(new Date()))
   const [volunteerName, setVolunteerName] = useState<string>('')
   const [volunteerId, setVolunteerId] = useState<string | null>(null)
   const [showAuthModal, setShowAuthModal] = useState(false)
@@ -783,106 +785,89 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
         </div>
       </div>
 
-      {/* Weekly Timeline View */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="flex">
-          {/* Time Axis */}
-          <div className="w-16 border-r bg-gray-50 hidden sm:block">
+      {/* Day view controls */}
+      <div className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setCurrentDate(startOfDay(new Date()))} className="text-sm text-gray-700">Today</button>
+            <button onClick={() => setCurrentDate(prev => addDays(prev, -1))} className="text-sm text-gray-700">Back</button>
+            <button onClick={() => setCurrentDate(prev => addDays(prev, 1))} className="text-sm text-gray-700">Next</button>
+          </div>
+
+          <div className="text-sm font-semibold">{format(currentDate, 'EEEE MMM d')}</div>
+
+          <div className="flex items-center gap-2">
+            <button onClick={() => setViewMode('month')} className={`px-3 py-1 rounded text-sm ${viewMode==='month' ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-700'}`}>Month</button>
+            <button onClick={() => setViewMode('week')} className={`px-3 py-1 rounded text-sm ${viewMode==='week' ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-700'}`}>Week</button>
+            <button onClick={() => setViewMode('day')} className={`px-3 py-1 rounded text-sm ${viewMode==='day' ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-700'}`}>Day</button>
+            <button onClick={() => setViewMode('agenda')} className={`px-3 py-1 rounded text-sm ${viewMode==='agenda' ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-700'}`}>Agenda</button>
+          </div>
+        </div>
+
+        <div className="mt-4 flex">
+          <div className="w-24 border-r bg-gray-50 hidden sm:block">
             <div className="h-12" />
             {hours.map((h) => (
-              <div key={h} className="h-12 px-2 text-xs text-gray-500 flex items-start justify-end pr-2">
-                {format(new Date().setHours(h, 0, 0, 0), 'HH:mm')}
+              <div key={h} className="h-12 px-2 text-xs text-gray-500 flex items-start pr-2">
+                {format(new Date().setHours(h, 0, 0, 0), 'h:mm a')}
               </div>
             ))}
           </div>
 
-          {/* Days container */}
-          <div className="flex-1 overflow-x-auto">
-            <div className="min-w-[700px]">
-              {/* Day headers */}
-              <div className="flex border-b bg-gray-50">
-                {days.map((day) => (
-                  <div key={day.toISOString()} className="flex-1 min-w-[200px] px-3 py-3 text-center text-xs font-medium text-gray-600">
-                    {format(day, 'EEE, MMM d')}
-                  </div>
+          <div className="flex-1 overflow-auto">
+            <div className="min-w-full p-4">
+              <div className="relative bg-white border rounded" style={{ minHeight: 24 * 48 }}>
+                {hours.map(h => (
+                  <div key={h} className="h-12 border-t border-gray-100" />
                 ))}
-              </div>
 
-              {/* Timeline grid */}
-              <div className="flex">
-                {days.map((day) => {
-                  const totalHeight = 24 * 48 // 48px per hour
+                {(() => {
+                  const day = startOfDay(currentDate)
                   const dayStart = new Date(day)
-                  dayStart.setHours(0, 0, 0, 0)
+                  dayStart.setHours(0,0,0,0)
                   const items = getDayItems(day)
+                  const totalHeight = 24 * 48
 
-                  return (
-                    <div key={day.toISOString()} className="relative flex-1 min-w-[200px] border-r border-gray-100" style={{ height: totalHeight }}>
-                      {/* hour grid lines */}
-                      {hours.map(h => (
-                        <div key={h} className="h-12 border-t border-gray-100" />
-                      ))}
+                  return items.map((it: any) => {
+                    const startMinutes = (it.start.getTime() - dayStart.getTime()) / 60000
+                    const endMinutes = (it.end.getTime() - dayStart.getTime()) / 60000
+                    const top = (startMinutes / (24 * 60)) * totalHeight
+                    const height = Math.max(24, ((endMinutes - startMinutes) / (24 * 60)) * totalHeight)
+                    const isAssigned = it.tasks.some((t: ExtendedTask) => t.task_assignments?.some(a => a.volunteer.id === volunteerId))
+                    const assignmentCount = it.assignment_count
+                    const isFull = it.tasks.every((t: ExtendedTask) => (t.task_assignments?.length || 0) >= t.volunteers_required)
 
-                      {/* Items */}
-                      {items.map((it: any) => {
-                        const startMinutes = (it.start.getTime() - dayStart.getTime()) / 60000
-                        const endMinutes = (it.end.getTime() - dayStart.getTime()) / 60000
-                        const top = (startMinutes / (24 * 60)) * totalHeight
-                        const height = Math.max(24, ((endMinutes - startMinutes) / (24 * 60)) * totalHeight)
-                        const col = it._col ?? 0
-                        const cols = it._cols ?? 1
-                        const leftPct = (col / cols) * 100
-                        const widthPct = 100 / cols
-                        const isAssigned = it.tasks.some((t: ExtendedTask) => t.task_assignments?.some(a => a.volunteer.id === volunteerId))
-                        const assignmentCount = it.assignment_count
-                        const isFull = it.tasks.every((t: ExtendedTask) => (t.task_assignments?.length || 0) >= t.volunteers_required)
+                    // call findAssignmentTaskId once to satisfy the typechecker and avoid repeated calls
+                    const assignedTaskId = findAssignmentTaskId(it)
+                    const assignableTaskId = findAssignableTaskId(it)
 
-                        return (
-                          <div
-                            key={it.id}
-                            className="absolute px-1"
-                            style={{
-                              top,
-                              left: `${leftPct}%`,
-                              width: `calc(${widthPct}% - 6px)`,
-                              height,
-                              zIndex: 10
-                            }}
-                          >
-                            <div
-                              onClick={() => openEventModal(it)}
-                              className="h-full p-2 rounded shadow-sm text-xs cursor-pointer overflow-hidden"
-                              style={{
-                                backgroundColor: isAssigned ? '#DBEAFE' : isFull ? '#FEE2E2' : '#F9FAFB',
-                                borderLeft: `4px solid ${it.task_type?.color || '#9CA3AF'}`
-                              }}
-                            >
-                              <div className="font-medium text-gray-900 truncate">{it.tasks[0].name}</div>
-                              <div className="text-gray-600 text-[11px]">{format(it.start, 'HH:mm')} - {format(it.end, 'HH:mm')}</div>
-                              <div className="text-gray-600 text-[11px]">{assignmentCount}/{it.volunteers_required} volunteers</div>
-                              <div className="mt-2 flex gap-2">
-                                        {findAssignmentTaskId(it) ? (
-                                          <button onClick={(e) => { e.stopPropagation(); handleUnassignTask(findAssignmentTaskId(it) as string) }} className="px-2 py-1 bg-red-500 text-white rounded text-xs">Unassign</button>
-                                        ) : (
-                                          <button onClick={(e) => { e.stopPropagation(); handleAssignTask(findAssignableTaskId(it) as string) }} disabled={isFull} className="px-2 py-1 bg-linear-to-r from-orange-500 to-purple-600 text-white rounded text-xs disabled:opacity-50">{isFull ? 'Full' : 'Assign'}</button>
-                                        )}
-                              </div>
-                            </div>
+                    return (
+                      <div key={it.id} className="absolute left-0 right-0 px-3" style={{ top, height }}>
+                        <div onClick={() => openEventModal(it)} className="h-full p-3 rounded shadow-sm text-sm cursor-pointer overflow-hidden flex items-start justify-between" style={{ backgroundColor: isAssigned ? '#DBEAFE' : isFull ? '#FEE2E2' : '#F9FAFB', borderLeft: `4px solid ${it.task_type?.color || '#9CA3AF'}` }}>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-gray-900 truncate">{it.tasks[0].name}</div>
+                            <div className="text-gray-600 text-xs">{format(it.start, 'h:mm a')} — {format(it.end, 'h:mm a')}</div>
+                            <div className="text-xs text-gray-500">{assignmentCount}/{it.volunteers_required} volunteers</div>
                           </div>
-                                )
-                      })}
-                    </div>
-                  )
-                })}
+                          <div className="flex-shrink-0 ml-4">
+                            {assignedTaskId ? (
+                              <button onClick={(e) => { e.stopPropagation(); handleUnassignTask(assignedTaskId as string) }} className="px-2 py-1 bg-red-500 text-white rounded text-xs">Unassign</button>
+                            ) : (
+                              <button onClick={(e) => { e.stopPropagation(); assignableTaskId && handleAssignTask(assignableTaskId as string) }} disabled={isFull} className="px-2 py-1 bg-linear-to-r from-orange-500 to-purple-600 text-white rounded text-xs disabled:opacity-50">{isFull ? 'Full' : 'Assign'}</button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })
+                })()}
               </div>
             </div>
           </div>
         </div>
       </div>
-
-
               {/* Event Details Modal (overlay) */}
-              {selectedItem && (
+              {selectedItem ? (
                 <div onClick={closeEventModal} className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                   <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg overflow-hidden max-w-3xl w-full mx-4">
                     {/* Themed header based on selected task name */}
@@ -931,7 +916,14 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
                                 <div className="text-xs text-gray-600 mt-2">Type: {modalTask.task_type?.name || '—'}</div>
                                 <div className="text-xs text-gray-600">Required: {modalTask.volunteers_required} • Assigned: {modalTask.task_assignments?.length || 0}</div>
                                 {modalTask.task_assignments && modalTask.task_assignments.length > 0 && (
-                                  <div className="text-xs text-gray-700 mt-2">Assigned: {modalTask.task_assignments.map(a => <li>{a.volunteer.name}</li>)}</div>
+                                  <div className="text-xs text-gray-700 mt-2">
+                                    <div className="text-xs font-medium mb-1">Assigned</div>
+                                    <ul className="list-disc list-inside">
+                                      {modalTask.task_assignments.map(a => (
+                                        <li key={a.id}>{a.volunteer.name}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
                                 )}
                               </div>
                               <div className="ml-4">
@@ -988,7 +980,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
                     </div>
                   </div>
                 </div>
-              )}
+              ) : null}
       {/* Auth Modal */}
       {showAuthModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

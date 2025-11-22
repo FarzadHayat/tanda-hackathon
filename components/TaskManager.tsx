@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Task, TaskType, Event } from '@/lib/types/database'
 import { useRouter } from 'next/navigation'
@@ -45,6 +45,26 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
     setShowForm(false)
     setError(null)
   }
+
+  // Event range helpers used by Gantt and selection logic
+  const eventStart = useMemo(() => new Date(event.start_date), [event.start_date])
+  const eventEnd = useMemo(() => {
+    const d = new Date(event.end_date)
+    d.setHours(23, 59, 59, 999)
+    return d
+  }, [event.end_date])
+  const totalMs = useMemo(() => eventEnd.getTime() - eventStart.getTime(), [eventStart, eventEnd])
+
+  // keyboard escape to close form
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showForm && !editingTaskId) resetForm()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showForm, editingTaskId])
 
   const handleEdit = (task: Task) => {
     // Parse datetime into date and time components
@@ -178,57 +198,68 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
           </button>
         </div>
 
-        <div className="space-y-2 max-h-96 overflow-y-auto">
+        
+
+        {/* Single stacked list view with mini timeline (Google Calendar-like) */}
+        <div className="max-h-96 overflow-y-auto">
           {tasks.length === 0 ? (
             <p className="text-sm text-gray-500">No tasks yet</p>
           ) : (
-            tasks.map((task) => {
-              const taskType = taskTypes.find(tt => tt.id === task.task_type_id)
-              const cardColor = taskType?.color || '#9CA3AF'
+            (() => {
+              const sorted = [...tasks].sort((a, b) => new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime())
               return (
-                <div
-                  key={task.id}
-                  className="p-4 rounded-lg border-2 shadow-sm"
-                  style={{
-                    backgroundColor: cardColor + '20', // Add transparency
-                    borderColor: cardColor
-                  }}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex-1">
-                      <h4 className="text-sm font-medium text-gray-900">{task.name}</h4>
-                      {taskType && (
-                        <span className="text-xs text-gray-600">{taskType.name}</span>
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEdit(task)}
-                        className="text-sm text-purple-600 hover:text-purple-800 font-bold"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(task.id)}
-                        className="text-sm text-red-600 hover:text-red-800 font-bold"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                  {task.description && (
-                    <p className="text-xs text-gray-600 mb-2">{task.description}</p>
-                  )}
-                  <div className="text-xs text-gray-500">
-                    <p>
-                      {format(new Date(task.start_datetime), 'MMM d, yyyy h:mm a')} -{' '}
-                      {format(new Date(task.end_datetime), 'MMM d, yyyy h:mm a')}
-                    </p>
-                    <p>Volunteers needed: {task.volunteers_required}</p>
-                  </div>
+                <div className="space-y-3">
+                  {sorted.map(task => {
+                    const tStart = new Date(task.start_datetime).getTime()
+                    const tEnd = new Date(task.end_datetime).getTime()
+                    const leftPct = ((tStart - eventStart.getTime()) / totalMs) * 100
+                    const widthPct = ((tEnd - tStart) / totalMs) * 100
+                    const tt = taskTypes.find(x => x.id === task.task_type_id)
+                    const color = tt?.color || '#9CA3AF'
+
+                    return (
+                      <div key={task.id} className="flex gap-4 items-center p-3 bg-white rounded-lg shadow-sm border border-gray-100">
+                        {/* mini timeline column */}
+                        <div className="flex-shrink-0 w-56">
+                          <div className="relative h-12 bg-gray-50 rounded-md border border-gray-100 overflow-hidden">
+                            {/* subtle grid lines */}
+                            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.02)_1px,transparent_1px)] bg-[length:50px_100%]" />
+                            <div className="absolute top-2 left-0 right-0 h-8">
+                              <div className="relative h-full">
+                                <div className="absolute" style={{ left: `${Math.max(0, leftPct)}%`, width: `${Math.max(0.8, widthPct)}%`, top: 0 }}>
+                                  <div className="h-8 rounded text-[12px] px-2 overflow-hidden whitespace-nowrap text-white flex items-center" style={{ backgroundColor: color }} title={`${task.name} (${format(new Date(task.start_datetime), 'MMM d H:mm')} - ${format(new Date(task.end_datetime), 'MMM d H:mm')})`}>
+                                    <span className="text-xs font-medium truncate">{task.name}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* details column */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="min-w-0">
+                              <h4 className="text-sm font-semibold text-gray-900 truncate">{task.name}</h4>
+                              <div className="text-xs text-gray-500 truncate">{task.description}</div>
+                              <div className="text-xs text-gray-400 mt-1">{format(new Date(task.start_datetime), 'MMM d, yyyy h:mm a')} — {format(new Date(task.end_datetime), 'h:mm a')}</div>
+                            </div>
+                            <div className="flex-shrink-0 flex flex-col items-end gap-2">
+                              <div className="text-xs text-gray-500">Vols: <span className="font-medium text-gray-800">{task.volunteers_required}</span></div>
+                              <div className="flex gap-2">
+                                <button onClick={() => handleEdit(task)} className="text-sm text-purple-600 hover:text-purple-800 font-medium">Edit</button>
+                                <button onClick={() => handleDelete(task.id)} className="text-sm text-red-600 hover:text-red-800 font-medium">Delete</button>
+                              </div>
+                            </div>
+                          </div>
+                          {task.location && <div className="text-xs text-gray-400 mt-2">Location: {task.location}</div>}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               )
-            })
+            })()
           )}
         </div>
       </div>

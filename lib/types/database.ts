@@ -36,7 +36,10 @@ export interface Task {
   start_datetime: string
   end_datetime: string
   volunteers_required: number
-  location: string | null
+  // optional textual location (address/venue) and optional coordinates
+  location?: string | null
+  latitude?: number | null
+  longitude?: number | null
   created_at: string
   updated_at: string
 }
@@ -58,7 +61,10 @@ export interface TaskAssignment {
 // Extended types with relations
 export interface TaskWithDetails extends Task {
   task_type?: TaskType | null
-  assignments?: TaskAssignment[]
+  // PostgREST returns nested relations under the relationship name; some queries use `task_assignments`
+  task_assignments?: TaskAssignmentWithDetails[]
+  // keep alias for older code
+  assignments?: TaskAssignmentWithDetails[]
   assignment_count?: number
 }
 
