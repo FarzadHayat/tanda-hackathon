@@ -70,7 +70,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
               if (hasTask || !changedTaskId) {
                 refreshTasks()
                 refreshVolunteers()
-                try { bcRef.current?.postMessage('refresh') } catch (e) {}
+                try { bcRef.current?.postMessage('refresh') } catch (e) { }
               }
             } catch (e) {
               // defensive: ignore payload parsing errors
@@ -88,7 +88,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
           supabase.removeChannel(broadChannelRef.current)
           broadChannelRef.current = null
         }
-      } catch (e) {}
+      } catch (e) { }
     }
   }, [supabase, event.id])
 
@@ -109,7 +109,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
         supabase.removeChannel(filteredChannelRef.current)
         filteredChannelRef.current = null
       }
-    } catch (e) {}
+    } catch (e) { }
 
     if (idsArr.length === 0) return
 
@@ -122,7 +122,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
           lastRealtimeRef.current = Date.now()
           refreshTasks()
           refreshVolunteers()
-          try { bcRef.current?.postMessage('refresh') } catch (e) {}
+          try { bcRef.current?.postMessage('refresh') } catch (e) { }
         }
       )
       .subscribe()
@@ -133,7 +133,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
           supabase.removeChannel(filteredChannelRef.current)
           filteredChannelRef.current = null
         }
-      } catch (e) {}
+      } catch (e) { }
     }
   }, [JSON.stringify(tasks.map(t => t.id || '')), supabase, event.id])
 
@@ -175,7 +175,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
     }
 
     return () => {
-      try { bcRef.current?.close() } catch (e) {}
+      try { bcRef.current?.close() } catch (e) { }
       bcRef.current = null
     }
   }, [event.id])
@@ -393,8 +393,8 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
       await refreshTasks()
       try {
         await refreshVolunteers()
-      } catch {}
-      try { bcRef.current?.postMessage('refresh') } catch (e) {}
+      } catch { }
+      try { bcRef.current?.postMessage('refresh') } catch (e) { }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     }
@@ -426,8 +426,8 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
       await refreshTasks()
       try {
         await refreshVolunteers()
-      } catch {}
-      try { bcRef.current?.postMessage('refresh') } catch (e) {}
+      } catch { }
+      try { bcRef.current?.postMessage('refresh') } catch (e) { }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     }
@@ -524,7 +524,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
         if (columns[ci] <= s) {
           // place here
           columns[ci] = e
-          ;(item as any)._col = ci
+            ; (item as any)._col = ci
           placed = true
           break
         }
@@ -532,7 +532,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
 
       if (!placed) {
         columns.push(e)
-        ;(item as any)._col = columns.length - 1
+          ; (item as any)._col = columns.length - 1
       }
 
       positioned.push(item as any)
@@ -547,13 +547,13 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
   // Generate a simple gradient based on the event name so each event has a themed header
   const getGradientForEvent = (name: string) => {
     const palettes: Array<[string, string]> = [
-      ['#FFA07A', '#FF7F50'],
-      ['#FFDEE9', '#B5FFFC'],
-      ['#FBD786', '#f7797d'],
-      ['#A18CD1', '#FBC2EB'],
-      ['#84fab0', '#8fd3f4'],
-      ['#FCCF31', '#F55555'],
-      ['#43E97B', '#38F9D7']
+      ['#E85D04', '#DC2F02'],  // Deep orange to red
+      ['#6A4C93', '#8B5CF6'],  // Deep purple to violet
+      ['#0077B6', '#0096C7'],  // Deep blue
+      ['#2A9D8F', '#06A77D'],  // Deep teal to green
+      ['#C9184A', '#A4133C'],  // Deep rose to burgundy
+      ['#0B5E90', '#1E88E5'],  // Navy to bright blue
+      ['#D00000', '#9D0208']   // Deep red
     ]
     let hash = 0
     for (let i = 0; i < name.length; i++) {
@@ -663,29 +663,26 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
 
                 return (
                   <>
-                    <div className={`px-4 py-2 rounded-lg border-2 ${
-                      isAtMax ? 'bg-red-50 border-red-300' :
-                      isNearMax ? 'bg-yellow-50 border-yellow-300' :
-                      isUnderMin ? 'bg-blue-50 border-blue-300' :
-                      'bg-green-50 border-green-300'
-                    }`}>
+                    <div className={`px-4 py-2 rounded-lg border-2 ${isAtMax ? 'bg-red-50 border-red-300' :
+                        isNearMax ? 'bg-yellow-50 border-yellow-300' :
+                          isUnderMin ? 'bg-blue-50 border-blue-300' :
+                            'bg-green-50 border-green-300'
+                      }`}>
                       <div className="flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${
-                          isAtMax ? 'text-red-600' :
-                          isNearMax ? 'text-yellow-600' :
-                          isUnderMin ? 'text-blue-600' :
-                          'text-green-600'
-                        }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${isAtMax ? 'text-red-600' :
+                            isNearMax ? 'text-yellow-600' :
+                              isUnderMin ? 'text-blue-600' :
+                                'text-green-600'
+                          }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <div>
                           <p className="text-xs font-medium text-gray-600">Your Hours</p>
-                          <p className={`text-sm font-bold ${
-                            isAtMax ? 'text-red-700' :
-                            isNearMax ? 'text-yellow-700' :
-                            isUnderMin ? 'text-blue-700' :
-                            'text-green-700'
-                          }`}>
+                          <p className={`text-sm font-bold ${isAtMax ? 'text-red-700' :
+                              isNearMax ? 'text-yellow-700' :
+                                isUnderMin ? 'text-blue-700' :
+                                  'text-green-700'
+                            }`}>
                             {currentHours.toFixed(1)}h
                             {maxHours && ` / ${maxHours}h`}
                           </p>
@@ -750,7 +747,19 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
         )}
       </div>
 
-      {/* Volunteers list (live) - moved to top for visibility */}
+      {/* Event Header (themed by event name) */}
+      <div className="mb-4 rounded-lg overflow-hidden shadow-sm">
+        <div className="p-4 text-white" style={{ background: headerGradient }}>
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold">{event.name}</h2>
+              <div className="text-sm opacity-90">{new Date(event.start_date).toLocaleDateString()} — {new Date(event.end_date).toLocaleDateString()}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Volunteers list (live) */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
           <div className="text-sm text-gray-700 font-medium">Volunteers</div>
@@ -861,15 +870,15 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
                               <div className="text-gray-600 text-[11px]">{format(it.start, 'HH:mm')} - {format(it.end, 'HH:mm')}</div>
                               <div className="text-gray-600 text-[11px]">{assignmentCount}/{it.volunteers_required} volunteers</div>
                               <div className="mt-2 flex gap-2">
-                                        {findAssignmentTaskId(it) ? (
-                                          <button onClick={(e) => { e.stopPropagation(); handleUnassignTask(findAssignmentTaskId(it) as string) }} className="px-2 py-1 bg-red-500 text-white rounded text-xs">Unassign</button>
-                                        ) : (
-                                          <button onClick={(e) => { e.stopPropagation(); handleAssignTask(findAssignableTaskId(it) as string) }} disabled={isFull} className="px-2 py-1 bg-linear-to-r from-orange-500 to-purple-600 text-white rounded text-xs disabled:opacity-50">{isFull ? 'Full' : 'Assign'}</button>
-                                        )}
+                                {findAssignmentTaskId(it) ? (
+                                  <button onClick={(e) => { e.stopPropagation(); handleUnassignTask(findAssignmentTaskId(it) as string) }} className="px-2 py-1 bg-red-500 text-white rounded text-xs">Unassign</button>
+                                ) : (
+                                  <button onClick={(e) => { e.stopPropagation(); handleAssignTask(findAssignableTaskId(it) as string) }} disabled={isFull} className="px-2 py-1 bg-linear-to-r from-orange-500 to-purple-600 text-white rounded text-xs disabled:opacity-50">{isFull ? 'Full' : 'Assign'}</button>
+                                )}
                               </div>
                             </div>
                           </div>
-                                )
+                        )
                       })}
                     </div>
                   )
@@ -881,114 +890,114 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
       </div>
 
 
-              {/* Event Details Modal (overlay) */}
-              {selectedItem && (
-                <div onClick={closeEventModal} className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                  <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg overflow-hidden max-w-3xl w-full mx-4">
-                    {/* Themed header based on selected task name */}
-                    <div className="p-4 text-white" style={{ background: modalGradient }}>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="text-lg font-bold">{modalTask?.name || selectedItem.tasks[0]?.name}</h3>
-                          <div className="text-sm opacity-90">{format(selectedItem.start, 'eee, MMM d')} — {format(selectedItem.end, 'eee, MMM d')}</div>
-                        </div>
-                        <div className="text-sm opacity-90">{selectedItem.assignment_count}/{selectedItem.volunteers_required} volunteers</div>
-                      </div>
-                    </div>
+      {/* Event Details Modal (overlay) */}
+      {selectedItem && (
+        <div onClick={closeEventModal} className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg overflow-hidden max-w-3xl w-full mx-4">
+            {/* Themed header based on selected task name */}
+            <div className="p-4 text-white" style={{ background: modalGradient }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold">{modalTask?.name || selectedItem.tasks[0]?.name}</h3>
+                  <div className="text-sm opacity-90">{format(selectedItem.start, 'eee, MMM d')} — {format(selectedItem.end, 'eee, MMM d')}</div>
+                </div>
+                <div className="text-sm opacity-90">{selectedItem.assignment_count}/{selectedItem.volunteers_required} volunteers</div>
+              </div>
+            </div>
 
-                    <div className="p-6 grid grid-cols-1 md:grid-cols-1 gap-4">
-                      {/* <div>
-                        <h4 className="text-sm font-medium text-gray-700 mb-2">Tasks in this group</h4>
-                        <div className="space-y-2 max-h-64 overflow-auto">
-                          {selectedItem.tasks.map(t => {
-                            const isActive = modalTask?.id === t.id
-                            return (
-                              <div key={t.id} onClick={() => setModalTask(t)} className={`p-3 border rounded cursor-pointer ${isActive ? 'ring-2 ring-offset-1 ring-indigo-400' : ''}`}>
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <div className="text-sm font-medium">{t.name}</div>
-                                    <div className="text-xs text-gray-600">{new Date(t.start_datetime).toLocaleString()} — {new Date(t.end_datetime).toLocaleString()}</div>
-                                  </div>
-                                  <div className="text-xs text-gray-600">{t.task_assignments?.length || 0}/{t.volunteers_required}</div>
-                                </div>
-                                {t.task_assignments && t.task_assignments.length > 0 && (
-                                  <div className="text-xs text-gray-700 mt-2">Volunteers: {t.task_assignments.map(a => a.volunteer.name).join(', ')}</div>
-                                )}
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div> */}
-
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-700 mb-2">Task Details</h4>
-                        {modalTask ? (
-                          <div className="p-4 border rounded">
-                            <div className="flex items-start justify-between">
-                              <div>
-                                {/* <div className="text-lg font-semibold">{modalTask.name}</div> */}
-                                <div className="text-xs text-gray-600">{new Date(modalTask.start_datetime).toLocaleString()} — {new Date(modalTask.end_datetime).toLocaleString()}</div>
-                                <div className="text-xs text-gray-600 mt-2">Type: {modalTask.task_type?.name || '—'}</div>
-                                <div className="text-xs text-gray-600">Required: {modalTask.volunteers_required} • Assigned: {modalTask.task_assignments?.length || 0}</div>
-                                {modalTask.task_assignments && modalTask.task_assignments.length > 0 && (
-                                  <div className="text-xs text-gray-700 mt-2">Assigned: {modalTask.task_assignments.map(a => <li>{a.volunteer.name}</li>)}</div>
-                                )}
-                              </div>
-                              <div className="ml-4">
-                                {modalTask.task_assignments?.some(a => a.volunteer.id === volunteerId) ? (
-                                  <button onClick={(e) => { e.stopPropagation(); handleUnassignTask(modalTask.id) }} className="px-3 py-2 bg-red-500 text-white rounded">Unassign</button>
-                                ) : (
-                                  <button onClick={(e) => { e.stopPropagation(); handleAssignTask(modalTask.id) }} className="px-3 py-2 bg-linear-to-r from-orange-500 to-purple-600 text-white rounded">Assign</button>
-                                )}
-                              </div>
-                            </div>
-                            <div className="mt-3 text-sm text-gray-700">{modalTask.description || ''}</div>
-
-                            {/* Map preview if task includes an address or coordinates */}
-                            {(() => {
-                              const addr = (modalTask as any)?.location || (modalTask as any)?.address || (modalTask as any)?.venue
-                              const lat = (modalTask as any)?.lat || (modalTask as any)?.latitude || (modalTask as any)?.lng || (modalTask as any)?.longitude
-                              if (lat && typeof lat === 'number') {
-                                // if we have numeric lat/lng, render Google Maps embed with coordinates
-                                const lng = (modalTask as any)?.lng || (modalTask as any)?.longitude
-                                const src = `https://www.google.com/maps?q=${lat},${lng}&output=embed`
-                                return (
-                                  <div className="mt-4">
-                                    <div className="text-xs text-gray-600 mb-2">Location</div>
-                                    <div className="w-full h-48 rounded overflow-hidden border">
-                                      <iframe className="w-full h-full" src={src} />
-                                    </div>
-                                  </div>
-                                )
-                              }
-
-                              if (addr && typeof addr === 'string') {
-                                const src = `https://www.google.com/maps?q=${encodeURIComponent(addr)}&output=embed`
-                                return (
-                                  <div className="mt-4">
-                                    <div className="text-xs text-gray-600 mb-2">Location</div>
-                                    <div className="w-full h-48 rounded overflow-hidden border">
-                                      <iframe className="w-full h-full" src={src} />
-                                    </div>
-                                    <div className="mt-2 text-xs text-gray-500"><a className="underline" target="_blank" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`}>Open in Maps</a></div>
-                                  </div>
-                                )
-                              }
-
-                              return null
-                            })()}
+            <div className="p-6 grid grid-cols-1 md:grid-cols-1 gap-4">
+              {/* <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Tasks in this group</h4>
+                <div className="space-y-2 max-h-64 overflow-auto">
+                  {selectedItem.tasks.map(t => {
+                    const isActive = modalTask?.id === t.id
+                    return (
+                      <div key={t.id} onClick={() => setModalTask(t)} className={`p-3 border rounded cursor-pointer ${isActive ? 'ring-2 ring-offset-1 ring-indigo-400' : ''}`}>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-sm font-medium">{t.name}</div>
+                            <div className="text-xs text-gray-600">{new Date(t.start_datetime).toLocaleString()} — {new Date(t.end_datetime).toLocaleString()}</div>
                           </div>
+                          <div className="text-xs text-gray-600">{t.task_assignments?.length || 0}/{t.volunteers_required}</div>
+                        </div>
+                        {t.task_assignments && t.task_assignments.length > 0 && (
+                          <div className="text-xs text-gray-700 mt-2">Volunteers: {t.task_assignments.map(a => a.volunteer.name).join(', ')}</div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div> */}
+
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Task Details</h4>
+                {modalTask ? (
+                  <div className="p-4 border rounded">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        {/* <div className="text-lg font-semibold">{modalTask.name}</div> */}
+                        <div className="text-xs text-gray-600">{new Date(modalTask.start_datetime).toLocaleString()} — {new Date(modalTask.end_datetime).toLocaleString()}</div>
+                        <div className="text-xs text-gray-600 mt-2">Type: {modalTask.task_type?.name || '—'}</div>
+                        <div className="text-xs text-gray-600">Required: {modalTask.volunteers_required} • Assigned: {modalTask.task_assignments?.length || 0}</div>
+                        {modalTask.task_assignments && modalTask.task_assignments.length > 0 && (
+                          <div className="text-xs text-gray-700 mt-2">Assigned: {modalTask.task_assignments.map(a => <li>{a.volunteer.name}</li>)}</div>
+                        )}
+                      </div>
+                      <div className="ml-4">
+                        {modalTask.task_assignments?.some(a => a.volunteer.id === volunteerId) ? (
+                          <button onClick={(e) => { e.stopPropagation(); handleUnassignTask(modalTask.id) }} className="px-3 py-2 bg-red-500 text-white rounded">Unassign</button>
                         ) : (
-                          <div className="p-4 text-sm text-gray-600">Select a task from the left to view details.</div>
+                          <button onClick={(e) => { e.stopPropagation(); handleAssignTask(modalTask.id) }} className="px-3 py-2 bg-linear-to-r from-orange-500 to-purple-600 text-white rounded">Assign</button>
                         )}
                       </div>
                     </div>
-                    <div className="p-4 border-t flex justify-end">
-                      <button onClick={closeEventModal} className="px-3 py-2 bg-gray-200 rounded">Close</button>
-                    </div>
+                    <div className="mt-3 text-sm text-gray-700">{modalTask.description || ''}</div>
+
+                    {/* Map preview if task includes an address or coordinates */}
+                    {(() => {
+                      const addr = (modalTask as any)?.location || (modalTask as any)?.address || (modalTask as any)?.venue
+                      const lat = (modalTask as any)?.lat || (modalTask as any)?.latitude || (modalTask as any)?.lng || (modalTask as any)?.longitude
+                      if (lat && typeof lat === 'number') {
+                        // if we have numeric lat/lng, render Google Maps embed with coordinates
+                        const lng = (modalTask as any)?.lng || (modalTask as any)?.longitude
+                        const src = `https://www.google.com/maps?q=${lat},${lng}&output=embed`
+                        return (
+                          <div className="mt-4">
+                            <div className="text-xs text-gray-600 mb-2">Location</div>
+                            <div className="w-full h-48 rounded overflow-hidden border">
+                              <iframe className="w-full h-full" src={src} />
+                            </div>
+                          </div>
+                        )
+                      }
+
+                      if (addr && typeof addr === 'string') {
+                        const src = `https://www.google.com/maps?q=${encodeURIComponent(addr)}&output=embed`
+                        return (
+                          <div className="mt-4">
+                            <div className="text-xs text-gray-600 mb-2">Location</div>
+                            <div className="w-full h-48 rounded overflow-hidden border">
+                              <iframe className="w-full h-full" src={src} />
+                            </div>
+                            <div className="mt-2 text-xs text-gray-500"><a className="underline" target="_blank" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`}>Open in Maps</a></div>
+                          </div>
+                        )
+                      }
+
+                      return null
+                    })()}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="p-4 text-sm text-gray-600">Select a task from the left to view details.</div>
+                )}
+              </div>
+            </div>
+            <div className="p-4 border-t flex justify-end">
+              <button onClick={closeEventModal} className="px-3 py-2 bg-gray-200 rounded">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Auth Modal */}
       {showAuthModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

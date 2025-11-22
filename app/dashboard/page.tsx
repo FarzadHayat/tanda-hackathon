@@ -8,13 +8,13 @@ import { signOut } from './actions'
 // Utility to generate a simple gradient from the event name (server-safe)
 function getGradientForEvent(name: string) {
   const palettes: Array<[string, string]> = [
-    ['#FFA07A', '#FF7F50'],
-    ['#FFDEE9', '#B5FFFC'],
-    ['#FBD786', '#f7797d'],
-    ['#A18CD1', '#FBC2EB'],
-    ['#84fab0', '#8fd3f4'],
-    ['#FCCF31', '#F55555'],
-    ['#43E97B', '#38F9D7']
+    ['#E85D04', '#DC2F02'],  // Deep orange to red
+    ['#6A4C93', '#8B5CF6'],  // Deep purple to violet
+    ['#0077B6', '#0096C7'],  // Deep blue
+    ['#2A9D8F', '#06A77D'],  // Deep teal to green
+    ['#C9184A', '#A4133C'],  // Deep rose to burgundy
+    ['#0B5E90', '#1E88E5'],  // Navy to bright blue
+    ['#D00000', '#9D0208']   // Deep red
   ]
   let hash = 0
   for (let i = 0; i < name.length; i++) {
