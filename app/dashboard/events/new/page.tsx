@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function NewEventPage() {
   const [name, setName] = useState('')
@@ -14,8 +15,19 @@ export default function NewEventPage() {
   const [maxVolunteerHours, setMaxVolunteerHours] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setUserEmail(user.email || null)
+      }
+    }
+    getUser()
+  }, [supabase])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -65,15 +77,36 @@ export default function NewEventPage() {
     }
   }
 
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-linear-to-r from-orange-500 to-purple-600 shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
-            <div className="flex items-center">
+            <div className="flex items-center gap-3">
+              <Image
+                src="/logo.png"
+                alt="Logo"
+                width={40}
+                height={40}
+                className="rounded-lg"
+              />
               <Link href="/dashboard" className="text-xl font-bold text-white">
                 What am I Doing?
               </Link>
+            </div>
+            <div className="flex items-center gap-4">
+              {userEmail && <span className="text-sm text-white">{userEmail}</span>}
+              <button
+                onClick={handleSignOut}
+                className="text-sm text-white hover:text-gray-100"
+              >
+                Sign Out
+              </button>
             </div>
           </div>
         </div>

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function SignupPage() {
   const [email, setEmail] = useState('')
@@ -42,19 +43,30 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Create your account
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Or{' '}
-            <Link href="/login" className="font-medium text-orange-600 hover:text-orange-700">
-              sign in to existing account
-            </Link>
-          </p>
-        </div>
+    <div className="h-screen relative bg-linear-to-br from-orange-500 to-purple-600 overflow-hidden px-4 sm:px-6 lg:px-8">
+      <div className="absolute top-12 left-0 right-0 flex items-center justify-center gap-4">
+        <Image
+          src="/logo.png"
+          alt="What am I Doing Logo"
+          width={80}
+          height={80}
+          className="rounded-lg"
+        />
+        <h1 className="text-4xl font-bold text-white">What am I Doing?</h1>
+      </div>
+      <div className="h-full flex items-center justify-center">
+        <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-xl">
+          <div>
+            <h2 className="text-center text-3xl font-extrabold text-gray-900">
+              Create your account
+            </h2>
+            <p className="mt-2 text-center text-sm text-gray-600">
+              Or{' '}
+              <Link href="/login" className="font-medium text-orange-600 hover:text-orange-700">
+                sign in to existing account
+              </Link>
+            </p>
+          </div>
         <form className="mt-8 space-y-6" onSubmit={handleSignup}>
           {error && (
             <div className="rounded-md bg-red-50 p-4">
@@ -122,6 +134,7 @@ export default function SignupPage() {
             </button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   )
