@@ -4,6 +4,27 @@ import Link from 'next/link'
 import { Event } from '@/lib/types/database'
 import { signOut } from './actions'
 
+// Utility to generate a simple gradient from the event name (server-safe)
+function getGradientForEvent(name: string) {
+  const palettes: Array<[string, string]> = [
+    ['#FFA07A', '#FF7F50'],
+    ['#FFDEE9', '#B5FFFC'],
+    ['#FBD786', '#f7797d'],
+    ['#A18CD1', '#FBC2EB'],
+    ['#84fab0', '#8fd3f4'],
+    ['#FCCF31', '#F55555'],
+    ['#43E97B', '#38F9D7']
+  ]
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash << 5) - hash + name.charCodeAt(i)
+    hash |= 0
+  }
+  const idx = Math.abs(hash) % palettes.length
+  const [a, b] = palettes[idx]
+  return `linear-gradient(90deg, ${a}, ${b})`
+}
+
 async function getEvents(organizerId: string) {
   const supabase = await createClient()
   const { data, error } = await supabase
@@ -51,7 +72,8 @@ async function getEventSummaries(organizerId: string) {
 
     const task_count = (tasks && tasks.length) || 0
     const volunteers_count = (volunteers && volunteers.length) || 0
-
+    const total_tasks = (tasks && tasks.length) || 0
+    let total_tasks_hours = 0
     // compute per-volunteer hours from task assignments
     const hoursByVolunteer: Record<string, number> = {}
     if (tasks) {
@@ -59,6 +81,7 @@ async function getEventSummaries(organizerId: string) {
         const start = new Date(t.start_datetime).getTime()
         const end = new Date(t.end_datetime).getTime()
         const hours = Math.max(0, (end - start) / (1000 * 60 * 60))
+        total_tasks_hours += hours
         const assigns = (t.task_assignments || []) as Array<{ id: string; volunteer_id: string }>
         for (const a of assigns) {
           if (!a || !a.volunteer_id) continue
@@ -66,7 +89,7 @@ async function getEventSummaries(organizerId: string) {
         }
       }
     }
-
+    console.log('Total tasks hours:', total_tasks_hours);
     const total_assigned_hours = Object.values(hoursByVolunteer).reduce((s, v) => s + v, 0)
     const avg_hours_per_volunteer = volunteers_count > 0 ? total_assigned_hours / volunteers_count : 0
 
@@ -147,13 +170,18 @@ export default async function DashboardPage() {
                 <Link
                   key={event.id}
                   href={`/dashboard/events/${event.id}`}
-                  className="group relative block p-6 bg-gray-50 rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border-2 border-gray-200 hover:border-orange-300 overflow-hidden"
+                  className="group relative block bg-gray-50 rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border-2 border-gray-200 hover:border-orange-300 overflow-hidden"
                 >
-                  <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-orange-500 to-purple-600"></div>
-                  <div className="relative z-10">
-                    <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-orange-600 transition-colors">
-                      {event.name}
-                    </h3>
+                  <div style={{ background: getGradientForEvent(event.name || '') }} className="p-4 text-white">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-bold">{event.name}</h3>
+                        <div className="text-xs opacity-90">{new Date(event.start_date).toLocaleDateString()} — {new Date(event.end_date).toLocaleDateString()}</div>
+                      </div>
+                      <div className="text-sm opacity-90">{event.task_count} tasks</div>
+                    </div>
+                  </div>
+                  <div className="relative z-10 p-6">
                     {event.description && (
                       <p className="text-sm text-gray-600 mb-4 line-clamp-2">
                         {event.description}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Event, TaskType, Task, TaskAssignment, Volunteer } from '@/lib/types/database'
 import { eachDayOfInterval, eachHourOfInterval, format, startOfDay, endOfDay, isWithinInterval, addDays } from 'date-fns'
@@ -30,6 +30,12 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
   const [filterVolunteer, setFilterVolunteer] = useState<string>('all')
   const [error, setError] = useState<string | null>(null)
   const supabase = createClient()
+  const bcRef = useRef<BroadcastChannel | null>(null)
+  const broadChannelRef = useRef<any | null>(null)
+  const filteredChannelRef = useRef<any | null>(null)
+  const tasksRef = useRef<ExtendedTask[]>(initialTasks)
+  const lastRealtimeRef = useRef<number>(0)
+  const pollRef = useRef<number | null>(null)
 
   // Load volunteer from localStorage
   useEffect(() => {
@@ -41,29 +47,95 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
     }
   }, [event.id])
 
-  // Set up real-time subscriptions
+  // Broad subscription: fallback subscription that listens for any changes
+  // on task_assignments and refreshes state when the changed record belongs
+  // to this event. We keep a ref to the channel so it's created once and
+  // cleaned up on unmount.
+  // Persistent broad subscription (created once) to catch any assignment
+  // changes and attempt to refresh when relevant. Cleaned up on unmount.
   useEffect(() => {
-    const channel = supabase
-      .channel(`event_${event.id}`)
+    const setup = () => {
+      if (broadChannelRef.current) return
+      broadChannelRef.current = supabase
+        .channel(`event_task_assignments_${event.id}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'task_assignments' },
+          (payload: any) => {
+            lastRealtimeRef.current = Date.now()
+            try {
+              const p: any = payload
+              const changedTaskId = p.record?.task_id ?? p.new?.task_id ?? p.old?.task_id
+              const hasTask = tasksRef.current?.some(t => t.id === changedTaskId)
+              if (hasTask || !changedTaskId) {
+                refreshTasks()
+                refreshVolunteers()
+                try { bcRef.current?.postMessage('refresh') } catch (e) {}
+              }
+            } catch (e) {
+              // defensive: ignore payload parsing errors
+            }
+          }
+        )
+        .subscribe()
+    }
+
+    setup()
+
+    return () => {
+      try {
+        if (broadChannelRef.current) {
+          supabase.removeChannel(broadChannelRef.current)
+          broadChannelRef.current = null
+        }
+      } catch (e) {}
+    }
+  }, [supabase, event.id])
+
+  // Filtered subscription that listens only to task_assignments for the
+  // tasks currently displayed. This subscription is recreated whenever the
+  // tasks list (ids) changes.
+  useEffect(() => {
+    // keep a stable ref of tasks for handlers
+    tasksRef.current = tasks
+
+    // build comma-separated ids for the filter
+    const idsArr = tasks.map(t => t.id).filter(Boolean)
+    const ids = idsArr.join(',')
+
+    // remove previous filtered channel if exists
+    try {
+      if (filteredChannelRef.current) {
+        supabase.removeChannel(filteredChannelRef.current)
+        filteredChannelRef.current = null
+      }
+    } catch (e) {}
+
+    if (idsArr.length === 0) return
+
+    filteredChannelRef.current = supabase
+      .channel(`event_task_assignments_filtered_${event.id}`)
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'task_assignments',
-          filter: `task_id=in.(${tasks.map(t => t.id).join(',')})`
-        },
-        () => {
-          // Refresh tasks when assignments change
+        { event: '*', schema: 'public', table: 'task_assignments', filter: `task_id=in.(${ids})` },
+        (payload: any) => {
+          lastRealtimeRef.current = Date.now()
           refreshTasks()
+          refreshVolunteers()
+          try { bcRef.current?.postMessage('refresh') } catch (e) {}
         }
       )
       .subscribe()
 
     return () => {
-      supabase.removeChannel(channel)
+      try {
+        if (filteredChannelRef.current) {
+          supabase.removeChannel(filteredChannelRef.current)
+          filteredChannelRef.current = null
+        }
+      } catch (e) {}
     }
-  }, [event.id, tasks, supabase])
+  }, [JSON.stringify(tasks.map(t => t.id || '')), supabase, event.id])
 
   // Subscribe to volunteers for live updates
   useEffect(() => {
@@ -85,6 +157,76 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
       supabase.removeChannel(vChannel)
     }
   }, [event.id, supabase])
+
+  // BroadcastChannel to notify other tabs in the same browser to refresh
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      bcRef.current = new BroadcastChannel(`tanda_event_${event.id}`)
+      bcRef.current.onmessage = (ev) => {
+        if (ev.data === 'refresh') {
+          refreshTasks()
+          refreshVolunteers()
+        }
+      }
+    } catch (err) {
+      // BroadcastChannel might not be available in some environments
+      bcRef.current = null
+    }
+
+    return () => {
+      try { bcRef.current?.close() } catch (e) {}
+      bcRef.current = null
+    }
+  }, [event.id])
+
+  // Polling fallback: if we haven't received realtime events recently,
+  // poll periodically to ensure updates propagate.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const POLL_INTERVAL = 5_000 // 20s
+    const QUIET_THRESHOLD = 30_000 // 30s without realtime
+
+    const startPoll = () => {
+      if (pollRef.current != null) return
+      pollRef.current = window.setInterval(async () => {
+        try {
+          await refreshTasks()
+          await refreshVolunteers()
+          lastRealtimeRef.current = Date.now()
+        } catch (e) {
+          // ignore
+        }
+      }, POLL_INTERVAL) as unknown as number
+    }
+
+    const stopPoll = () => {
+      if (pollRef.current != null) {
+        clearInterval(pollRef.current)
+        pollRef.current = null
+      }
+    }
+
+    // watcher checks if realtime has been quiet and starts/stops poll
+    const watcher = window.setInterval(() => {
+      const last = lastRealtimeRef.current || 0
+      const now = Date.now()
+      if (now - last > QUIET_THRESHOLD) {
+        startPoll()
+      } else {
+        stopPoll()
+      }
+    }, 2000)
+
+    // initial check
+    if (Date.now() - (lastRealtimeRef.current || 0) > QUIET_THRESHOLD) startPoll()
+
+    return () => {
+      clearInterval(watcher)
+      stopPoll()
+    }
+  }, [])
 
   const refreshTasks = async () => {
     const { data, error } = await supabase
@@ -247,7 +389,12 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
 
       if (error) throw error
 
+      // locally refresh and notify other tabs/clients
       await refreshTasks()
+      try {
+        await refreshVolunteers()
+      } catch {}
+      try { bcRef.current?.postMessage('refresh') } catch (e) {}
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     }
@@ -275,7 +422,12 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
 
       if (error) throw error
 
+      // locally refresh and notify other tabs/clients
       await refreshTasks()
+      try {
+        await refreshVolunteers()
+      } catch {}
+      try { bcRef.current?.postMessage('refresh') } catch (e) {}
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     }
@@ -391,6 +543,38 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
 
     return positioned as DayItem[]
   }
+
+  // Generate a simple gradient based on the event name so each event has a themed header
+  const getGradientForEvent = (name: string) => {
+    const palettes: Array<[string, string]> = [
+      ['#FFA07A', '#FF7F50'],
+      ['#FFDEE9', '#B5FFFC'],
+      ['#FBD786', '#f7797d'],
+      ['#A18CD1', '#FBC2EB'],
+      ['#84fab0', '#8fd3f4'],
+      ['#FCCF31', '#F55555'],
+      ['#43E97B', '#38F9D7']
+    ]
+    let hash = 0
+    for (let i = 0; i < name.length; i++) {
+      hash = (hash << 5) - hash + name.charCodeAt(i)
+      hash |= 0
+    }
+    const idx = Math.abs(hash) % palettes.length
+    const [a, b] = palettes[idx]
+    return `linear-gradient(90deg, ${a}, ${b})`
+  }
+
+  const headerGradient = useMemo(() => getGradientForEvent(event.name || ''), [event.name])
+
+  // Modal state for showing event details overlay
+  const [selectedItem, setSelectedItem] = useState<DayItem | null>(null)
+
+  const openEventModal = (item: DayItem) => {
+    setSelectedItem(item)
+  }
+
+  const closeEventModal = () => setSelectedItem(null)
 
   // Helper: pick a task id within a grouped item for assigning/unassigning
   const findAssignableTaskId = (item: DayItem) => {
@@ -548,6 +732,19 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
         )}
       </div>
 
+      {/* Event Header (themed by event name) */}
+      <div className="mb-4 rounded-lg overflow-hidden shadow-sm">
+        <div className="p-4 text-white" style={{ background: headerGradient }}>
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold">{event.name}</h2>
+              <div className="text-sm opacity-90">{new Date(event.start_date).toLocaleDateString()} — {new Date(event.end_date).toLocaleDateString()}</div>
+            </div>
+            <div className="text-sm opacity-90">{event.min_volunteer_hours}h min</div>
+          </div>
+        </div>
+      </div>
+
       {/* Volunteers list (live) */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
@@ -645,15 +842,15 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
                               <div className="text-gray-600 text-[11px]">{format(it.start, 'HH:mm')} - {format(it.end, 'HH:mm')}</div>
                               <div className="text-gray-600 text-[11px]">{assignmentCount}/{it.volunteers_required} volunteers</div>
                               <div className="mt-2 flex gap-2">
-                                {findAssignmentTaskId(it) ? (
-                                  <button onClick={() => handleUnassignTask(findAssignmentTaskId(it) as string)} className="px-2 py-1 bg-red-500 text-white rounded text-xs">Unassign</button>
-                                ) : (
-                                  <button onClick={() => handleAssignTask(findAssignableTaskId(it) as string)} disabled={isFull} className="px-2 py-1 bg-linear-to-r from-orange-500 to-purple-600 text-white rounded text-xs disabled:opacity-50">{isFull ? 'Full' : 'Assign'}</button>
-                                )}
+                                        {findAssignmentTaskId(it) ? (
+                                          <button onClick={(e) => { e.stopPropagation(); handleUnassignTask(findAssignmentTaskId(it) as string) }} className="px-2 py-1 bg-red-500 text-white rounded text-xs">Unassign</button>
+                                        ) : (
+                                          <button onClick={(e) => { e.stopPropagation(); handleAssignTask(findAssignableTaskId(it) as string) }} disabled={isFull} className="px-2 py-1 bg-linear-to-r from-orange-500 to-purple-600 text-white rounded text-xs disabled:opacity-50">{isFull ? 'Full' : 'Assign'}</button>
+                                        )}
                               </div>
                             </div>
                           </div>
-                        )
+                                )
                       })}
                     </div>
                   )
@@ -664,6 +861,53 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
         </div>
       </div>
 
+
+              {/* Event Details Modal (overlay) */}
+              {selectedItem && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <div className="bg-white rounded-lg p-6 max-w-3xl w-full mx-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-900 mb-1">{selectedItem.tasks[0]?.name}</h3>
+                        <div className="text-sm text-gray-600">{format(selectedItem.start, 'eee, MMM d HH:mm')} — {format(selectedItem.end, 'eee, MMM d HH:mm')}</div>
+                        <div className="text-sm text-gray-600 mt-2">{selectedItem.assignment_count}/{selectedItem.volunteers_required} volunteers</div>
+                      </div>
+                      <div>
+                        <button onClick={closeEventModal} className="px-3 py-1 bg-gray-200 rounded">Close</button>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">Tasks in this group</h4>
+                        <div className="space-y-2 max-h-64 overflow-auto">
+                          {selectedItem.tasks.map(t => (
+                            <div key={t.id} className="p-2 border rounded">
+                              <div className="text-sm font-medium">{t.name}</div>
+                              <div className="text-xs text-gray-600">{new Date(t.start_datetime).toLocaleString()} — {new Date(t.end_datetime).toLocaleString()}</div>
+                              <div className="text-xs text-gray-600">Required: {t.volunteers_required} • Assigned: {t.task_assignments?.length || 0}</div>
+                              {t.task_assignments && t.task_assignments.length > 0 && (
+                                <div className="text-xs text-gray-700 mt-1">
+                                  <strong>Volunteers:</strong> {t.task_assignments.map(a => a.volunteer.name).join(', ')}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">Details</h4>
+                        <div className="text-sm text-gray-700">
+                          <div><strong>Group ID:</strong> {selectedItem.id}</div>
+                          <div className="mt-2"><strong>Task type:</strong> {selectedItem.task_type?.name || '—'}</div>
+                          <div className="mt-2"><strong>Duration:</strong> {((selectedItem.end.getTime() - selectedItem.start.getTime())/(1000*60)).toFixed(0)} minutes</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
       {/* Auth Modal */}
       {showAuthModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
