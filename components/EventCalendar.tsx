@@ -25,6 +25,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
   const [volunteerId, setVolunteerId] = useState<string | null>(null)
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [showErrorModal, setShowErrorModal] = useState(false)
+  const [volunteers, setVolunteers] = useState<Volunteer[]>([])
   const [filterTaskType, setFilterTaskType] = useState<string>('all')
   const [filterVolunteer, setFilterVolunteer] = useState<string>('all')
   const [error, setError] = useState<string | null>(null)
@@ -64,6 +65,27 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
     }
   }, [event.id, tasks, supabase])
 
+  // Subscribe to volunteers for live updates
+  useEffect(() => {
+    // initial load
+    refreshVolunteers()
+
+    const vChannel = supabase
+      .channel(`event_volunteers_${event.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'volunteers', filter: `event_id=eq.${event.id}` },
+        () => {
+          refreshVolunteers()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(vChannel)
+    }
+  }, [event.id, supabase])
+
   const refreshTasks = async () => {
     const { data, error } = await supabase
       .from('tasks')
@@ -80,6 +102,20 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
 
     if (!error && data) {
       setTasks(data)
+    }
+  }
+
+  const refreshVolunteers = async () => {
+    try {
+      const { data } = await supabase
+        .from('volunteers')
+        .select('*')
+        .eq('event_id', event.id)
+        .order('name', { ascending: true })
+
+      if (data) setVolunteers(data)
+    } catch (err) {
+      // ignore
     }
   }
 
@@ -122,6 +158,12 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
 
       setVolunteerId(volunteerId)
       localStorage.setItem(`volunteer_${event.id}`, JSON.stringify({ id: volunteerId, name: volunteerName.trim() }))
+      // Ensure volunteers list updates immediately for this client
+      try {
+        await refreshVolunteers()
+      } catch (e) {
+        // ignore
+      }
       setShowAuthModal(false)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An error occurred')
@@ -504,6 +546,26 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
             <div className="text-sm text-red-700">{error}</div>
           </div>
         )}
+      </div>
+
+      {/* Volunteers list (live) */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-sm text-gray-700 font-medium">Volunteers</div>
+          <div className="text-xs text-gray-500">{volunteers.length} total</div>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {volunteers.map((v: Volunteer) => {
+            const assignedCount = tasks.reduce((s, t) => s + (t.task_assignments?.filter(a => a.volunteer.id === v.id).length || 0), 0)
+            return (
+              <div key={v.id} className="flex items-center gap-2 px-3 py-1 bg-gray-100 rounded-full text-xs text-gray-700">
+                <span className="h-2 w-2 rounded-full bg-green-400" />
+                <span>{v.name}</span>
+                <span className="ml-2 text-[11px] text-gray-500">{assignedCount}</span>
+              </div>
+            )
+          })}
+        </div>
       </div>
 
       {/* Weekly Timeline View */}
