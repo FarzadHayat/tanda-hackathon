@@ -22,6 +22,7 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
   const [startTime, setStartTime] = useState('')
   const [endDate, setEndDate] = useState('')
   const [endTime, setEndTime] = useState('')
+  const [loc, setLoc] = useState('')
   const [volunteersRequired, setVolunteersRequired] = useState(1)
   const [taskTypeId, setTaskTypeId] = useState<string>('')
   const [loading, setLoading] = useState(false)
@@ -38,6 +39,7 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
     setEndTime('')
     setVolunteersRequired(1)
     setTaskTypeId('')
+    setLoc('')
     setEditingTaskId(null)
     setShowForm(false)
     setError(null)
@@ -61,6 +63,7 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
     setTaskTypeId(task.task_type_id || '')
     setEditingTaskId(task.id)
     setShowForm(true)
+    setLoc(task.location || '')
     setError(null)
   }
 
@@ -101,6 +104,7 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
         start_datetime: startISO,
         end_datetime: endISO,
         volunteers_required: volunteersRequired,
+        location: loc || null,
       }
 
       if (editingTaskId) {
@@ -284,6 +288,18 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                 value={volunteersRequired}
                 onChange={(e) => setVolunteersRequired(parseInt(e.target.value))}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Location
+              </label>
+              <textarea
+                rows={2}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
+                value={loc}
+                onChange={(e) => setLoc(e.target.value)}
               />
             </div>
 
