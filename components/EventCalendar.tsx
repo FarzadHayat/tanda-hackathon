@@ -894,108 +894,155 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
 
       {/* Event Details Modal (overlay) */}
       {selectedItem && (
-        <div onClick={closeEventModal} className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg overflow-hidden max-w-3xl w-full mx-4">
-            {/* Themed header based on selected task name */}
-            <div className="p-4 text-white" style={{ background: modalGradient }}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-bold">{modalTask?.name || selectedItem.tasks[0]?.name}</h3>
-                  <div className="text-sm opacity-90">{format(selectedItem.start, 'eee, MMM d')} — {format(selectedItem.end, 'eee, MMM d')}</div>
-                </div>
-                <div className="text-sm opacity-90">{selectedItem.assignment_count}/{selectedItem.volunteers_required} volunteers</div>
-              </div>
-            </div>
-
-            <div className="p-6 grid grid-cols-1 md:grid-cols-1 gap-4">
-              {/* <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Tasks in this group</h4>
-                <div className="space-y-2 max-h-64 overflow-auto">
-                  {selectedItem.tasks.map(t => {
-                    const isActive = modalTask?.id === t.id
-                    return (
-                      <div key={t.id} onClick={() => setModalTask(t)} className={`p-3 border rounded cursor-pointer ${isActive ? 'ring-2 ring-offset-1 ring-indigo-400' : ''}`}>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="text-sm font-medium">{t.name}</div>
-                            <div className="text-xs text-gray-600">{new Date(t.start_datetime).toLocaleString()} — {new Date(t.end_datetime).toLocaleString()}</div>
-                          </div>
-                          <div className="text-xs text-gray-600">{t.task_assignments?.length || 0}/{t.volunteers_required}</div>
-                        </div>
-                        {t.task_assignments && t.task_assignments.length > 0 && (
-                          <div className="text-xs text-gray-700 mt-2">Volunteers: {t.task_assignments.map(a => a.volunteer.name).join(', ')}</div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div> */}
-
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Task Details</h4>
-                {modalTask ? (
-                  <div className="p-4 border rounded">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        {/* <div className="text-lg font-semibold">{modalTask.name}</div> */}
-                        <div className="text-xs text-gray-600">{new Date(modalTask.start_datetime).toLocaleString()} — {new Date(modalTask.end_datetime).toLocaleString()}</div>
-                        <div className="text-xs text-gray-600 mt-2">Type: {modalTask.task_type?.name || '—'}</div>
-                        <div className="text-xs text-gray-600">Required: {modalTask.volunteers_required} • Assigned: {modalTask.task_assignments?.length || 0}</div>
-                        {modalTask.task_assignments && modalTask.task_assignments.length > 0 && (
-                          <div className="text-xs text-gray-700 mt-2">Assigned: {modalTask.task_assignments.map(a => <li>{a.volunteer.name}</li>)}</div>
-                        )}
-                      </div>
-                      <div className="ml-4">
-                        {modalTask.task_assignments?.some(a => a.volunteer.id === volunteerId) ? (
-                          <button onClick={(e) => { e.stopPropagation(); handleUnassignTask(modalTask.id) }} className="px-3 py-2 bg-red-500 text-white rounded">Unassign</button>
-                        ) : (
-                          <button onClick={(e) => { e.stopPropagation(); handleAssignTask(modalTask.id) }} className="px-3 py-2 bg-linear-to-r from-orange-500 to-purple-600 text-white rounded">Assign</button>
-                        )}
-                      </div>
+        <div onClick={closeEventModal} className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg overflow-hidden max-w-2xl w-full max-h-[90vh] flex flex-col">
+            {/* Themed header */}
+            <div className="p-6 text-white" style={{ background: modalGradient }}>
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h3 className="text-2xl font-bold mb-2">{modalTask?.name || selectedItem.tasks[0]?.name}</h3>
+                  <div className="flex items-center gap-4 text-sm opacity-90">
+                    <div className="flex items-center gap-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      {format(selectedItem.start, 'MMM d, h:mm a')} - {format(selectedItem.end, 'h:mm a')}
                     </div>
-                    <div className="mt-3 text-sm text-gray-700">{modalTask.description || ''}</div>
-
-                    {/* Map preview if task includes an address or coordinates */}
-                    {(() => {
-                      const addr = (modalTask as any)?.location || (modalTask as any)?.address || (modalTask as any)?.venue
-                      const lat = (modalTask as any)?.lat || (modalTask as any)?.latitude || (modalTask as any)?.lng || (modalTask as any)?.longitude
-                      if (lat && typeof lat === 'number') {
-                        // if we have numeric lat/lng, render Google Maps embed with coordinates
-                        const lng = (modalTask as any)?.lng || (modalTask as any)?.longitude
-                        const src = `https://www.google.com/maps?q=${lat},${lng}&output=embed`
-                        return (
-                          <div className="mt-4">
-                            <div className="text-xs text-gray-600 mb-2">Location</div>
-                            <div className="w-full h-48 rounded overflow-hidden border">
-                              <iframe className="w-full h-full" src={src} />
-                            </div>
-                          </div>
-                        )
-                      }
-
-                      if (addr && typeof addr === 'string') {
-                        const src = `https://www.google.com/maps?q=${encodeURIComponent(addr)}&output=embed`
-                        return (
-                          <div className="mt-4">
-                            <div className="text-xs text-gray-600 mb-2">Location</div>
-                            <div className="w-full h-48 rounded overflow-hidden border">
-                              <iframe className="w-full h-full" src={src} />
-                            </div>
-                            <div className="mt-2 text-xs text-gray-500"><a className="underline" target="_blank" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`}>Open in Maps</a></div>
-                          </div>
-                        )
-                      }
-
-                      return null
-                    })()}
+                    {modalTask?.task_type && (
+                      <div className="flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                        </svg>
+                        {modalTask.task_type.name}
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div className="p-4 text-sm text-gray-600">Select a task from the left to view details.</div>
-                )}
+                </div>
+                <button
+                  onClick={closeEventModal}
+                  className="ml-4 p-2 hover:bg-white hover:bg-opacity-20 rounded-full transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
             </div>
-            <div className="p-4 border-t flex justify-end">
-              <button onClick={closeEventModal} className="px-3 py-2 bg-gray-200 rounded">Close</button>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {modalTask ? (
+                <div className="space-y-6">
+                  {/* Description */}
+                  {modalTask.description && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2">Description</h4>
+                      <p className="text-sm text-gray-600">{modalTask.description}</p>
+                    </div>
+                  )}
+
+                  {/* Volunteers */}
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-700 mb-3">
+                      Volunteers ({modalTask.task_assignments?.length || 0}/{modalTask.volunteers_required})
+                    </h4>
+                    {modalTask.task_assignments && modalTask.task_assignments.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {modalTask.task_assignments.map((a, idx) => (
+                          <div key={idx} className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            <span className="text-sm font-medium text-gray-700">{a.volunteer.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 italic">No volunteers assigned yet</p>
+                    )}
+                  </div>
+
+                  {/* Location map */}
+                  {(() => {
+                    const addr = (modalTask as any)?.location || (modalTask as any)?.address || (modalTask as any)?.venue
+                    const lat = (modalTask as any)?.lat || (modalTask as any)?.latitude || (modalTask as any)?.lng || (modalTask as any)?.longitude
+                    if (lat && typeof lat === 'number') {
+                      const lng = (modalTask as any)?.lng || (modalTask as any)?.longitude
+                      const src = `https://www.google.com/maps?q=${lat},${lng}&output=embed`
+                      return (
+                        <div>
+                          <h4 className="text-sm font-semibold text-gray-700 mb-2">Location</h4>
+                          <div className="w-full h-48 rounded-lg overflow-hidden border border-gray-200">
+                            <iframe className="w-full h-full" src={src} />
+                          </div>
+                        </div>
+                      )
+                    }
+
+                    if (addr && typeof addr === 'string') {
+                      const src = `https://www.google.com/maps?q=${encodeURIComponent(addr)}&output=embed`
+                      return (
+                        <div>
+                          <h4 className="text-sm font-semibold text-gray-700 mb-2">Location</h4>
+                          <div className="w-full h-48 rounded-lg overflow-hidden border border-gray-200">
+                            <iframe className="w-full h-full" src={src} />
+                          </div>
+                          <a
+                            className="inline-flex items-center gap-1 mt-2 text-xs text-orange-600 hover:text-orange-700 font-medium"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                            Open in Google Maps
+                          </a>
+                        </div>
+                      )
+                    }
+
+                    return null
+                  })()}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  <p className="text-sm">Select a task to view details</p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer with action */}
+            <div className="p-4 border-t bg-gray-50 flex items-center justify-between">
+              <button
+                onClick={closeEventModal}
+                className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 font-medium"
+              >
+                Close
+              </button>
+              {modalTask && (
+                <div>
+                  {modalTask.task_assignments?.some(a => a.volunteer.id === volunteerId) ? (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleUnassignTask(modalTask.id) }}
+                      className="px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors"
+                    >
+                      Unassign Me
+                    </button>
+                  ) : (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleAssignTask(modalTask.id) }}
+                      disabled={(modalTask.task_assignments?.length || 0) >= modalTask.volunteers_required}
+                      className="px-6 py-2 bg-linear-to-r from-orange-500 to-purple-600 hover:from-orange-600 hover:to-purple-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {(modalTask.task_assignments?.length || 0) >= modalTask.volunteers_required ? 'Task Full' : 'Assign Me'}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
