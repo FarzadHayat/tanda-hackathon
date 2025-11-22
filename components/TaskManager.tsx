@@ -15,6 +15,7 @@ interface TaskManagerProps {
 export default function TaskManager({ eventId, event, taskTypes, initialTasks }: TaskManagerProps) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
   const [showForm, setShowForm] = useState(false)
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [startDate, setStartDate] = useState('')
@@ -27,6 +28,41 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
+
+  const resetForm = () => {
+    setName('')
+    setDescription('')
+    setStartDate('')
+    setStartTime('')
+    setEndDate('')
+    setEndTime('')
+    setVolunteersRequired(1)
+    setTaskTypeId('')
+    setEditingTaskId(null)
+    setShowForm(false)
+    setError(null)
+  }
+
+  const handleEdit = (task: Task) => {
+    // Parse datetime into date and time components
+    const startDT = new Date(task.start_datetime)
+    const endDT = new Date(task.end_datetime)
+
+    const formatDate = (date: Date) => date.toISOString().split('T')[0]
+    const formatTime = (date: Date) => date.toTimeString().slice(0, 5)
+
+    setName(task.name)
+    setDescription(task.description || '')
+    setStartDate(formatDate(startDT))
+    setStartTime(formatTime(startDT))
+    setEndDate(formatDate(endDT))
+    setEndTime(formatTime(endDT))
+    setVolunteersRequired(task.volunteers_required)
+    setTaskTypeId(task.task_type_id || '')
+    setEditingTaskId(task.id)
+    setShowForm(true)
+    setError(null)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -57,32 +93,42 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
       const startISO = new Date(startDatetime).toISOString()
       const endISO = new Date(endDatetime).toISOString()
 
-      const { data, error } = await supabase
-        .from('tasks')
-        .insert({
-          event_id: eventId,
-          task_type_id: taskTypeId || null,
-          name,
-          description,
-          start_datetime: startISO,
-          end_datetime: endISO,
-          volunteers_required: volunteersRequired,
-        })
-        .select()
-        .single()
+      const taskData = {
+        event_id: eventId,
+        task_type_id: taskTypeId || null,
+        name,
+        description,
+        start_datetime: startISO,
+        end_datetime: endISO,
+        volunteers_required: volunteersRequired,
+      }
 
-      if (error) throw error
+      if (editingTaskId) {
+        // Update existing task
+        const { data, error } = await supabase
+          .from('tasks')
+          .update(taskData)
+          .eq('id', editingTaskId)
+          .select()
+          .single()
 
-      setTasks([...tasks, data])
-      setName('')
-      setDescription('')
-      setStartDate('')
-      setStartTime('')
-      setEndDate('')
-      setEndTime('')
-      setVolunteersRequired(1)
-      setTaskTypeId('')
-      setShowForm(false)
+        if (error) throw error
+
+        setTasks(tasks.map(t => t.id === editingTaskId ? data : t))
+      } else {
+        // Create new task
+        const { data, error } = await supabase
+          .from('tasks')
+          .insert(taskData)
+          .select()
+          .single()
+
+        if (error) throw error
+
+        setTasks([...tasks, data])
+      }
+
+      resetForm()
       router.refresh()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An error occurred')
@@ -110,19 +156,25 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
   }
 
   return (
-    <div className="bg-white shadow rounded-lg p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Tasks</h3>
+    <div className="relative bg-gray-50 shadow-lg rounded-xl p-6 border-2 border-gray-200 overflow-hidden">
+      <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-purple-600 to-orange-500"></div>
+      <div className="absolute bottom-0 right-0 w-20 h-20 bg-linear-to-tl from-purple-50 to-transparent rounded-tl-full opacity-30"></div>
+      <div className="relative z-10">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-xl font-bold text-gray-900 flex items-center">
+            <div className="w-2 h-6 bg-linear-to-b from-purple-600 to-orange-500 rounded-full mr-3"></div>
+            Tasks
+          </h3>
         <button
-          onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700"
+          onClick={() => showForm ? resetForm() : setShowForm(true)}
+          className="px-4 py-2 bg-linear-to-r from-orange-500 to-purple-600 text-white text-sm rounded-md hover:from-orange-600 hover:to-purple-700"
         >
           {showForm ? 'Cancel' : 'Add Task'}
-        </button>
-      </div>
+          </button>
+        </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="mb-6 p-4 bg-gray-50 rounded-md">
+        <form onSubmit={handleSubmit} className="mb-6 p-5 bg-white rounded-lg shadow-sm border border-gray-200">
           {error && (
             <div className="mb-4 rounded-md bg-red-50 p-4">
               <div className="text-sm text-red-700">{error}</div>
@@ -137,7 +189,7 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
               <input
                 type="text"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
@@ -149,7 +201,7 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
               </label>
               <textarea
                 rows={2}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
@@ -162,7 +214,7 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
               <select
                 value={taskTypeId}
                 onChange={(e) => setTaskTypeId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
               >
                 <option value="">No type</option>
                 {taskTypes.map((tt) => (
@@ -182,7 +234,7 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
                   <input
                     type="date"
                     required
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
                   />
@@ -190,7 +242,7 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
                     type="time"
                     required
                     step="60"
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
                   />
@@ -205,7 +257,7 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
                   <input
                     type="date"
                     required
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
                   />
@@ -213,7 +265,7 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
                     type="time"
                     required
                     step="60"
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                     value={endTime}
                     onChange={(e) => setEndTime(e.target.value)}
                   />
@@ -229,7 +281,7 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
                 type="number"
                 min="1"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                 value={volunteersRequired}
                 onChange={(e) => setVolunteersRequired(parseInt(e.target.value))}
               />
@@ -238,9 +290,9 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
             <button
               type="submit"
               disabled={loading}
-              className="w-full px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full px-4 py-2 bg-linear-to-r from-orange-500 to-purple-600 text-white text-sm rounded-md hover:from-orange-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Creating...' : 'Create Task'}
+              {loading ? (editingTaskId ? 'Updating...' : 'Creating...') : (editingTaskId ? 'Update Task' : 'Create Task')}
             </button>
           </div>
         </form>
@@ -255,7 +307,7 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
             return (
               <div
                 key={task.id}
-                className="p-3 bg-gray-50 rounded-md border-l-4"
+                className="p-4 bg-white rounded-lg border-l-4 shadow-sm"
                 style={{ borderLeftColor: taskType?.color || '#9CA3AF' }}
               >
                 <div className="flex justify-between items-start mb-2">
@@ -265,12 +317,20 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
                       <span className="text-xs text-gray-600">{taskType.name}</span>
                     )}
                   </div>
-                  <button
-                    onClick={() => handleDelete(task.id)}
-                    className="text-sm text-red-600 hover:text-red-800"
-                  >
-                    Delete
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEdit(task)}
+                      className="text-sm text-orange-600 hover:text-orange-800"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(task.id)}
+                      className="text-sm text-red-600 hover:text-red-800"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
                 {task.description && (
                   <p className="text-xs text-gray-600 mb-2">{task.description}</p>
@@ -286,6 +346,7 @@ export default function TaskManager({ eventId, event, taskTypes, initialTasks }:
             )
           })
         )}
+      </div>
       </div>
     </div>
   )

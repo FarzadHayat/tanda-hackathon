@@ -13,7 +13,7 @@ interface TaskTypeManagerProps {
 export default function TaskTypeManager({ eventId, initialTaskTypes }: TaskTypeManagerProps) {
   const [taskTypes, setTaskTypes] = useState<TaskType[]>(initialTaskTypes)
   const [name, setName] = useState('')
-  const [color, setColor] = useState('#3B82F6')
+  const [color, setColor] = useState('#F97316')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
@@ -39,7 +39,7 @@ export default function TaskTypeManager({ eventId, initialTaskTypes }: TaskTypeM
 
       setTaskTypes([...taskTypes, data])
       setName('')
-      setColor('#3B82F6')
+      setColor('#F97316')
       router.refresh()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An error occurred')
@@ -67,8 +67,14 @@ export default function TaskTypeManager({ eventId, initialTaskTypes }: TaskTypeM
   }
 
   return (
-    <div className="bg-white shadow rounded-lg p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Task Types</h3>
+    <div className="relative bg-gray-50 shadow-lg rounded-xl p-6 border-2 border-gray-200 overflow-hidden">
+      <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-orange-500 to-purple-600"></div>
+      <div className="absolute bottom-0 right-0 w-20 h-20 bg-linear-to-tl from-orange-50 to-transparent rounded-tl-full opacity-30"></div>
+      <div className="relative z-10">
+        <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+          <div className="w-2 h-6 bg-linear-to-b from-orange-500 to-purple-600 rounded-full mr-3"></div>
+          Task Types
+        </h3>
 
       <form onSubmit={handleSubmit} className="mb-6">
         {error && (
@@ -82,7 +88,7 @@ export default function TaskTypeManager({ eventId, initialTaskTypes }: TaskTypeM
             type="text"
             placeholder="Task type name"
             required
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
@@ -96,7 +102,7 @@ export default function TaskTypeManager({ eventId, initialTaskTypes }: TaskTypeM
           <button
             type="submit"
             disabled={loading}
-            className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-linear-to-r from-orange-500 to-purple-600 text-white text-sm rounded-md hover:from-orange-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Add
           </button>
@@ -110,7 +116,7 @@ export default function TaskTypeManager({ eventId, initialTaskTypes }: TaskTypeM
           taskTypes.map((taskType) => (
             <div
               key={taskType.id}
-              className="flex items-center justify-between p-3 bg-gray-50 rounded-md"
+              className="flex items-center justify-between p-3 bg-white rounded-md shadow-sm border border-gray-200"
             >
               <div className="flex items-center gap-3">
                 <div
@@ -130,6 +136,7 @@ export default function TaskTypeManager({ eventId, initialTaskTypes }: TaskTypeM
             </div>
           ))
         )}
+      </div>
       </div>
     </div>
   )

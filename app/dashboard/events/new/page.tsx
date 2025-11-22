@@ -56,11 +56,11 @@ export default function NewEventPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow">
+      <nav className="bg-linear-to-r from-orange-500 to-purple-600 shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <Link href="/dashboard" className="text-xl font-bold text-gray-900">
+              <Link href="/dashboard" className="text-xl font-bold text-white">
                 What am I Doing?
               </Link>
             </div>
@@ -73,16 +73,19 @@ export default function NewEventPage() {
           <div className="mb-6">
             <Link
               href="/dashboard"
-              className="text-sm text-blue-600 hover:text-blue-800"
+              className="text-sm text-orange-600 hover:text-orange-800"
             >
               &larr; Back to Dashboard
             </Link>
           </div>
 
-          <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">
-              Create New Event
-            </h2>
+          <div className="relative bg-gray-50 shadow-lg rounded-xl p-6 border-2 border-gray-200 overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-2 bg-linear-to-r from-orange-500 to-purple-600"></div>
+            <div className="absolute bottom-0 right-0 w-32 h-32 bg-linear-to-tl from-orange-50 to-transparent rounded-tl-full opacity-30"></div>
+            <div className="relative z-10">
+              <h2 className="text-3xl font-bold mb-6 bg-linear-to-r from-orange-600 to-purple-600 bg-clip-text text-transparent">
+                Create New Event
+              </h2>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
@@ -102,7 +105,7 @@ export default function NewEventPage() {
                   type="text"
                   id="name"
                   required
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
@@ -118,7 +121,7 @@ export default function NewEventPage() {
                 <textarea
                   id="description"
                   rows={4}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
@@ -136,7 +139,7 @@ export default function NewEventPage() {
                     type="date"
                     id="startDate"
                     required
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
                   />
@@ -153,7 +156,7 @@ export default function NewEventPage() {
                     type="date"
                     id="endDate"
                     required
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
                   />
@@ -164,18 +167,19 @@ export default function NewEventPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 inline-flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 inline-flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-linear-to-r from-orange-500 to-purple-600 hover:from-orange-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? 'Creating...' : 'Create Event'}
                 </button>
                 <Link
                   href="/dashboard"
-                  className="flex-1 inline-flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="flex-1 inline-flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
                 >
                   Cancel
                 </Link>
               </div>
             </form>
+            </div>
           </div>
         </div>
       </main>

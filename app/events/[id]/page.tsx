@@ -77,11 +77,11 @@ export default async function PublicEventPage({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow">
+      <nav className="bg-linear-to-r from-orange-500 to-purple-600 shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <h1 className="text-xl font-bold text-gray-900">What am I Doing?</h1>
+              <h1 className="text-xl font-bold text-white">What am I Doing?</h1>
             </div>
           </div>
         </div>
