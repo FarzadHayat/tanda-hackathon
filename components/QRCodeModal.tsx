@@ -1,6 +1,6 @@
 'use client'
 
-import { QRCode } from 'react-qr-code'
+import QRCode from 'react-qr-code'
 import { useRef } from 'react'
 
 interface QRCodeModalProps {
