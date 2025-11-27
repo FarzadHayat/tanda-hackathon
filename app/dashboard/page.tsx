@@ -47,6 +47,7 @@ type EventSummary = Event & {
   task_count: number
   volunteers_count: number
   total_assigned_hours: number
+  total_tasks_hours: number
   avg_hours_per_volunteer: number
 }
 
@@ -91,7 +92,6 @@ async function getEventSummaries(organizerId: string) {
         }
       }
     }
-    console.log('Total tasks hours:', total_tasks_hours);
     const total_assigned_hours = Object.values(hoursByVolunteer).reduce((s, v) => s + v, 0)
     const avg_hours_per_volunteer = volunteers_count > 0 ? total_assigned_hours / volunteers_count : 0
 
@@ -100,6 +100,7 @@ async function getEventSummaries(organizerId: string) {
       task_count,
       volunteers_count,
       total_assigned_hours,
+      total_tasks_hours,
       avg_hours_per_volunteer,
     } as EventSummary
   }))
@@ -173,7 +174,7 @@ export default async function DashboardPage() {
                 </p>
               </div>
             </div>
-            ) : (
+          ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {events.map((event: any) => (
                 <EventCard

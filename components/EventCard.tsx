@@ -87,8 +87,9 @@ export default function EventCard({ event, gradient }: EventCardProps) {
                 </div>
                 <div className="p-3 bg-white rounded-md border border-gray-100 text-center">
                   <div className="text-xs text-gray-500">Total Assigned Hours</div>
-                  <div className="text-lg font-bold text-gray-900">{event.total_assigned_hours.toFixed(1)}</div>
-                  <div className="text-xs text-gray-500">avg {event.avg_hours_per_volunteer.toFixed(1)} / vol</div>
+                  <div className="text-lg font-bold text-gray-900">
+                    {event.total_assigned_hours.toFixed(1)} / {event.total_tasks_hours?.toFixed(1) || '0.0'}
+                  </div>
                 </div>
               </div>
               <div className="flex items-center text-sm text-gray-700">
