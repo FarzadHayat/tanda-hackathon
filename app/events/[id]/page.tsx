@@ -43,7 +43,7 @@ export async function generateMetadata({
 }): Promise<{ title: string }> {
   const { id } = await params
   const event = await getEvent(id)
-  
+
   return {
     title: event ? event.name : 'Event Not Found',
   }

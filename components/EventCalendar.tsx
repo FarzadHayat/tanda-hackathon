@@ -25,6 +25,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
   const [volunteerId, setVolunteerId] = useState<string | null>(null)
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [showErrorModal, setShowErrorModal] = useState(false)
+  const [pendingTaskId, setPendingTaskId] = useState<string | null>(null)
   const [volunteers, setVolunteers] = useState<Volunteer[]>([])
   const [filterTaskType, setFilterTaskType] = useState<string>('all')
   const [filterVolunteer, setFilterVolunteer] = useState<string>('all')
@@ -440,8 +441,8 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
     if (el) {
       el.addEventListener('pointermove', throttledSend)
       el.addEventListener('pointerdown', throttledSend)
-      ;(el as any).addEventListener('touchmove', throttledSend, { passive: true })
-      ;(el as any).addEventListener('touchstart', throttledSend, { passive: true })
+        ; (el as any).addEventListener('touchmove', throttledSend, { passive: true })
+        ; (el as any).addEventListener('touchstart', throttledSend, { passive: true })
       el.addEventListener('pointerleave', handlePointerLeave)
       // NOTE: do not clear cursor on touchend — keep it at last touch location until prune
     }
@@ -453,8 +454,8 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
       if (el) {
         el.removeEventListener('pointermove', throttledSend)
         el.removeEventListener('pointerdown', throttledSend)
-        ;(el as any).removeEventListener('touchmove', throttledSend)
-        ;(el as any).removeEventListener('touchstart', throttledSend)
+          ; (el as any).removeEventListener('touchmove', throttledSend)
+          ; (el as any).removeEventListener('touchstart', throttledSend)
         el.removeEventListener('pointerleave', handlePointerLeave)
       }
     }
@@ -570,6 +571,14 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
         // ignore
       }
       setShowAuthModal(false)
+
+      // If there was a pending task assignment, execute it now
+      if (pendingTaskId) {
+        const taskIdToAssign = pendingTaskId
+        setPendingTaskId(null)
+        // Pass volunteerId directly to avoid state timing issues
+        handleAssignTask(taskIdToAssign, volunteerId)
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     }
@@ -601,8 +610,11 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
     return totalHours
   }
 
-  const handleAssignTask = async (taskId: string) => {
-    if (!volunteerId) {
+  const handleAssignTask = async (taskId: string, overrideVolunteerId?: string) => {
+    const effectiveVolunteerId = overrideVolunteerId || volunteerId
+
+    if (!effectiveVolunteerId) {
+      setPendingTaskId(taskId)
       setShowAuthModal(true)
       return
     }
@@ -615,7 +627,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
 
       // Check if already assigned
       const isAssigned = task.task_assignments?.some(
-        a => a.volunteer.id === volunteerId
+        a => a.volunteer.id === effectiveVolunteerId
       )
 
       if (isAssigned) {
@@ -647,7 +659,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
         .from('task_assignments')
         .insert({
           task_id: taskId,
-          volunteer_id: volunteerId,
+          volunteer_id: effectiveVolunteerId,
         })
 
       if (error) throw error
@@ -857,6 +869,16 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
     }
   }, [selectedItem])
 
+  // Update modalTask when tasks change (e.g., after assignment/unassignment)
+  useEffect(() => {
+    if (modalTask) {
+      const updatedTask = tasks.find(t => t.id === modalTask.id)
+      if (updatedTask) {
+        setModalTask(updatedTask)
+      }
+    }
+  }, [tasks])
+
   // Helper: pick a task id within a grouped item for assigning/unassigning
   const findAssignableTaskId = (item: DayItem) => {
     // prefer a task that has capacity and is not assigned to current volunteer
@@ -1033,7 +1055,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
           ) : (
             Object.values(cursors).map((c) => (
               <div key={c.volunteerId} className="flex items-center gap-2 px-2 py-1 bg-white/80 rounded-full shadow-sm mr-2">
-                <div style={{ background: c.color }} className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[12px] font-bold">{c.initials || (c.name||'').slice(0,2)}</div>
+                <div style={{ background: c.color }} className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[12px] font-bold">{c.initials || (c.name || '').slice(0, 2)}</div>
                 <div className="text-xs font-medium text-gray-700">{c.name}</div>
                 <div className="w-2 h-2 rounded-full bg-green-400 ml-1" />
               </div>
@@ -1043,7 +1065,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
       </div>
 
       {/* Volunteers list (live) */}
-          <div className="mb-4">
+      <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
           <div className="text-sm text-gray-700 font-medium">Volunteers</div>
           <div className="text-xs text-gray-500">{volunteers.length} total</div>
@@ -1054,7 +1076,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
             return (
               <div key={v.id} className="flex items-center gap-2 px-3 py-1 bg-gray-100 rounded-full text-xs text-gray-700">
                 {/* try to show avatar from storage if present */}
-                <div className="w-6 h-6 rounded-full flex items-center justify-center bg-gray-300 text-xs font-medium text-gray-700">{(v.name||'').split(' ').map((s:string)=>s[0]).slice(0,2).join('')}</div>
+                <div className="w-6 h-6 rounded-full flex items-center justify-center bg-gray-300 text-xs font-medium text-gray-700">{(v.name || '').split(' ').map((s: string) => s[0]).slice(0, 2).join('')}</div>
                 <span>{v.name}</span>
                 <span className="ml-2 text-[11px] text-gray-500">{assignedCount}</span>
               </div>
@@ -1180,12 +1202,12 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
                   if (!c || c.volunteerId === volunteerId) return null
                   return (
                     <div key={c.volunteerId} style={{ position: 'absolute', left: `${c.leftPct}%`, top: `${c.topPct}%`, transform: 'translate(-50%,-50%)' }} className="pointer-events-none">
-                        <div style={{ background: c.color, color: '#fff' }} className="flex items-center gap-2 px-2 py-1 rounded-full text-xs font-medium shadow">
-                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold" style={{ background: '#ffffff22', color: '#fff' }}>
-                              <div style={{ background: c.color, width: 28, height: 28, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, fontWeight: 700 }}>{c.initials || c.name?.slice(0,2)}</div>
-                            </div>
-                          <div className="hidden sm:block">{c.name}</div>
+                      <div style={{ background: c.color, color: '#fff' }} className="flex items-center gap-2 px-2 py-1 rounded-full text-xs font-medium shadow">
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold" style={{ background: '#ffffff22', color: '#fff' }}>
+                          <div style={{ background: c.color, width: 28, height: 28, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, fontWeight: 700 }}>{c.initials || c.name?.slice(0, 2)}</div>
                         </div>
+                        <div className="hidden sm:block">{c.name}</div>
+                      </div>
                     </div>
                   )
                 })}
@@ -1382,7 +1404,10 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowAuthModal(false)}
+                  onClick={() => {
+                    setShowAuthModal(false)
+                    setPendingTaskId(null)
+                  }}
                   className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
                 >
                   Cancel
