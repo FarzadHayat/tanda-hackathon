@@ -48,6 +48,7 @@ export interface Volunteer {
   id: string
   event_id: string
   name: string
+  avatar_url?: string | null
   created_at: string
 }
 

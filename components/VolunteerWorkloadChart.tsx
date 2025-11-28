@@ -7,6 +7,7 @@ import { Event, Volunteer, TaskAssignment, Task } from '@/lib/types/database'
 interface VolunteerWorkload {
   volunteerId: string
   volunteerName: string
+  avatarUrl: string | null
   totalHours: number
 }
 
@@ -78,6 +79,7 @@ export default function VolunteerWorkloadChart({ eventId, event }: VolunteerWork
         workloadMap.set(volunteer.id, {
           volunteerId: volunteer.id,
           volunteerName: volunteer.name,
+          avatarUrl: volunteer.avatar_url || null,
           totalHours: 0,
         })
       })
@@ -160,9 +162,9 @@ export default function VolunteerWorkloadChart({ eventId, event }: VolunteerWork
               </div>
 
               {/* Chart container */}
-              <div className="relative" style={{ height: chartHeight + 60 }}>
+              <div className="relative" style={{ height: chartHeight + 80 }}>
                 {/* Y-axis labels and grid lines */}
-                <div className="absolute left-0 top-0 bottom-12 w-12 flex flex-col justify-between text-xs text-gray-500">
+                <div className="absolute left-0 top-0 bottom-16 w-12 flex flex-col justify-between text-xs text-gray-500">
                   {[...Array(6)].map((_, i) => {
                     const value = Math.round((maxHours * (5 - i)) / 5)
                     return (
@@ -174,7 +176,7 @@ export default function VolunteerWorkloadChart({ eventId, event }: VolunteerWork
                 </div>
 
                 {/* Chart area */}
-                <div className="absolute left-12 right-0 top-0 bottom-12">
+                <div className="absolute left-12 right-0 top-0 bottom-16">
                   {/* Grid lines */}
                   <div className="absolute inset-0">
                     {[...Array(6)].map((_, i) => (
@@ -243,17 +245,30 @@ export default function VolunteerWorkloadChart({ eventId, event }: VolunteerWork
                   </div>
                 </div>
 
-                {/* X-axis labels (volunteer names) */}
-                <div className="absolute left-12 right-0 bottom-0 h-12">
+                {/* X-axis labels (volunteer names with avatars) */}
+                <div className="absolute left-12 right-0 bottom-0 h-16">
                   <div className="flex items-start justify-start gap-2 px-4 pt-2">
                     {workloadData.map((volunteer) => (
                       <div
                         key={volunteer.volunteerId}
-                        className="text-xs text-gray-600 truncate text-center"
+                        className="flex flex-col items-center gap-1"
                         style={{ width: barWidth }}
                         title={volunteer.volunteerName}
                       >
-                        {volunteer.volunteerName}
+                        {volunteer.avatarUrl ? (
+                          <img
+                            src={volunteer.avatarUrl}
+                            alt={volunteer.volunteerName}
+                            className="w-8 h-8 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-xs font-medium text-gray-700">
+                            {volunteer.volunteerName.split(' ').map(s => s[0]).slice(0, 2).join('')}
+                          </div>
+                        )}
+                        <span className="text-xs text-gray-600 truncate w-full text-center">
+                          {volunteer.volunteerName}
+                        </span>
                       </div>
                     ))}
                   </div>

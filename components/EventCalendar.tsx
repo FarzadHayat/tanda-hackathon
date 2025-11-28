@@ -30,6 +30,8 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
   const [filterTaskType, setFilterTaskType] = useState<string>('all')
   const [filterVolunteer, setFilterVolunteer] = useState<string>('all')
   const [error, setError] = useState<string | null>(null)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const supabase = createClient()
   const bcRef = useRef<BroadcastChannel | null>(null)
 
@@ -329,6 +331,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
         .eq('event_id', event.id)
         .order('name', { ascending: true })
 
+      console.log('Fetched volunteers:', data)
       if (data) setVolunteers(data)
     } catch (err) {
       // ignore
@@ -353,10 +356,43 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
         .maybeSingle()
 
       let volunteerId: string
+      let avatarUrl: string | null = null
+
+      // Upload avatar if provided
+      if (avatarFile) {
+        const fileExt = avatarFile.name.split('.').pop()
+        const fileName = `${event.id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
+
+        const { error: uploadError, data: uploadData } = await supabase.storage
+          .from('avatars')
+          .upload(fileName, avatarFile)
+
+        if (uploadError) {
+          console.error('Avatar upload error:', uploadError)
+        } else {
+          const { data: urlData } = supabase.storage
+            .from('avatars')
+            .getPublicUrl(fileName)
+          avatarUrl = urlData.publicUrl
+          console.log('Avatar uploaded, URL:', avatarUrl)
+        }
+      }
 
       if (existingVolunteer) {
-        // Use existing volunteer
+        // Use existing volunteer, update avatar if provided
         volunteerId = existingVolunteer.id
+        if (avatarUrl) {
+          const { error: updateError } = await supabase
+            .from('volunteers')
+            .update({ avatar_url: avatarUrl })
+            .eq('id', volunteerId)
+
+          if (updateError) {
+            console.error('Error updating volunteer avatar:', updateError)
+          } else {
+            console.log('Volunteer avatar updated successfully')
+          }
+        }
       } else {
         // Create new volunteer
         const { data: newVolunteer, error } = await supabase
@@ -364,6 +400,7 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
           .insert({
             event_id: event.id,
             name: volunteerName.trim(),
+            avatar_url: avatarUrl,
           })
           .select()
           .single()
@@ -372,12 +409,13 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
         volunteerId = newVolunteer.id
       }
 
-      // If user selected an avatar file, upload it to Supabase Storage
-      // Save volunteer info (only id + name — avatar support removed)
+      // Save volunteer info to localStorage
       localStorage.setItem(`volunteer_${event.id}`, JSON.stringify({ id: volunteerId, name: volunteerName.trim() }))
 
       setVolunteerId(volunteerId)
-      // ensure name stored
+      // Reset avatar state
+      setAvatarFile(null)
+      setAvatarPreview(null)
       // Ensure volunteers list updates immediately for this client
       try {
         await refreshVolunteers()
@@ -886,8 +924,17 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
             const assignedCount = tasks.reduce((s, t) => s + (t.task_assignments?.filter(a => a.volunteer.id === v.id).length || 0), 0)
             return (
               <div key={v.id} className="flex items-center gap-2 px-3 py-1 bg-gray-100 rounded-full text-xs text-gray-700">
-                {/* try to show avatar from storage if present */}
-                <div className="w-6 h-6 rounded-full flex items-center justify-center bg-gray-300 text-xs font-medium text-gray-700">{(v.name || '').split(' ').map((s: string) => s[0]).slice(0, 2).join('')}</div>
+                {v.avatar_url ? (
+                  <img
+                    src={v.avatar_url}
+                    alt={v.name}
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-300 text-xs font-medium text-gray-700">
+                    {(v.name || '').split(' ').map((s: string) => s[0]).slice(0, 2).join('')}
+                  </div>
+                )}
                 <span>{v.name}</span>
                 <span className="ml-2 text-[11px] text-gray-500">{assignedCount}</span>
               </div>
@@ -1189,7 +1236,60 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
                 value={volunteerName}
                 onChange={(e) => setVolunteerName(e.target.value)}
               />
-              {/* profile photo removed — only name is required */}
+
+              {/* Optional profile photo */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Profile Photo (optional)
+                </label>
+                <div className="flex items-center gap-4">
+                  {avatarPreview ? (
+                    <div className="relative">
+                      <img
+                        src={avatarPreview}
+                        alt="Preview"
+                        className="w-16 h-16 rounded-full object-cover border-2 border-orange-300"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAvatarFile(null)
+                          setAvatarPreview(null)
+                        }}
+                        className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center text-gray-400">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                  )}
+                  <label className="cursor-pointer px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50">
+                    Choose Photo
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) {
+                          setAvatarFile(file)
+                          const reader = new FileReader()
+                          reader.onloadend = () => {
+                            setAvatarPreview(reader.result as string)
+                          }
+                          reader.readAsDataURL(file)
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+
               <div className="flex gap-2">
                 <button
                   type="submit"
@@ -1202,6 +1302,8 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
                   onClick={() => {
                     setShowAuthModal(false)
                     setPendingTaskId(null)
+                    setAvatarFile(null)
+                    setAvatarPreview(null)
                   }}
                   className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
                 >
