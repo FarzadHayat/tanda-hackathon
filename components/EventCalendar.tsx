@@ -544,6 +544,12 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
       return task.task_assignments?.some(a => a.volunteer.id === volunteerId)
     }
 
+    // Filter by specific volunteer
+    if (filterVolunteer.startsWith('volunteer_')) {
+      const selectedVolunteerId = filterVolunteer.replace('volunteer_', '')
+      return task.task_assignments?.some(a => a.volunteer.id === selectedVolunteerId)
+    }
+
     return true
   })
 
@@ -850,6 +856,14 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
               <option value="all">All Tasks</option>
               <option value="unassigned">Unassigned</option>
               {volunteerId && <option value="mine">My Tasks</option>}
+              {volunteers.length > 0 && (
+                <option disabled>──────────</option>
+              )}
+              {volunteers.map((v) => (
+                <option key={v.id} value={`volunteer_${v.id}`}>
+                  {v.name}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -940,11 +954,11 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
                         return (
                           <div
                             key={it.id}
-                            className="absolute px-1"
+                            className="absolute"
                             style={{
                               top,
                               left: `${leftPct}%`,
-                              width: `calc(${widthPct}% - 6px)`,
+                              width: `${widthPct}%`,
                               height,
                               zIndex: 10
                             }}

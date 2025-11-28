@@ -71,7 +71,7 @@ export default function EventHeader({ event, eventUrl }: EventHeaderProps) {
               </svg>
               <div>
                 <p className="text-xs text-orange-700 font-medium">Start Date</p>
-                  <p className="text-sm font-bold text-orange-900">{format(new Date(event.start_date), 'MMM d, yyyy')}</p>
+                <p className="text-sm font-bold text-orange-900">{format(new Date(event.start_date), 'MMM d, yyyy')}</p>
               </div>
             </div>
             <div className="flex items-center px-4 py-2 bg-linear-to-br from-purple-50 to-purple-100 rounded-lg border border-purple-200">
@@ -80,7 +80,7 @@ export default function EventHeader({ event, eventUrl }: EventHeaderProps) {
               </svg>
               <div>
                 <p className="text-xs text-purple-700 font-medium">End Date</p>
-                  <p className="text-sm font-bold text-purple-900">{format(new Date(event.end_date), 'MMM d, yyyy')}</p>
+                <p className="text-sm font-bold text-purple-900">{format(new Date(event.end_date), 'MMM d, yyyy')}</p>
               </div>
             </div>
             <div className="flex items-center px-4 py-2 bg-linear-to-br from-green-50 to-green-100 rounded-lg border border-green-200">
