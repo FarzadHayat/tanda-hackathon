@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { Event, TaskType, Task, TaskAssignment, Volunteer } from '@/lib/types/database'
+import { Event, TaskType } from '@/lib/types/database'
 import EventCalendar from '@/components/EventCalendar'
 import { redirect } from 'next/navigation'
 import Image from 'next/image'
@@ -34,6 +34,19 @@ async function getTaskTypes(eventId: string) {
   }
 
   return data as TaskType[]
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}): Promise<{ title: string }> {
+  const { id } = await params
+  const event = await getEvent(id)
+  
+  return {
+    title: event ? event.name : 'Event Not Found',
+  }
 }
 
 async function getTasks(eventId: string) {
