@@ -123,6 +123,18 @@ export default function EventHeader({ event, eventUrl }: EventHeaderProps) {
                     className="flex-1 px-3 py-2 border-2 border-blue-300 rounded-lg text-sm bg-gray-100 focus:outline-none focus:border-blue-500"
                   />
                   <CopyButton text={eventUrl} />
+                  <a
+                    href={eventUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 bg-linear-to-r from-orange-600 to-purple-700 text-white rounded-lg hover:from-orange-700 hover:to-purple-800 font-medium transition-all flex items-center gap-2"
+                    title="Open in new tab"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    Open
+                  </a>
                   <button
                     onClick={() => setShowQRModal(true)}
                     className="px-4 py-2 bg-linear-to-r from-orange-600 to-purple-700 text-white rounded-lg hover:from-orange-700 hover:to-purple-800 font-medium transition-all flex items-center gap-2"
