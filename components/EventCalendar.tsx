@@ -899,9 +899,9 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
           <div className="flex-1 overflow-x-auto">
             <div className="md:min-w-[700px] min-w-0 relative">
               {/* Day headers */}
-              <div className="flex border-b bg-gray-50">
-                {days.map((day) => (
-                  <div key={day.toISOString()} className="flex-1 min-w-[200px] px-3 py-3 text-center text-xs font-medium text-gray-600">
+              <div className="flex border-b">
+                {days.map((day, dayIndex) => (
+                  <div key={day.toISOString()} className={`flex-1 min-w-[200px] px-3 py-3 text-center text-xs font-medium text-gray-600 ${dayIndex % 2 === 0 ? 'bg-white' : 'bg-gray-100'}`}>
                     {format(day, 'EEE, MMM d')}
                   </div>
                 ))}
@@ -909,14 +909,15 @@ export default function EventCalendar({ event, taskTypes, initialTasks }: EventC
 
               {/* Timeline grid */}
               <div className="flex">
-                {days.map((day) => {
+                {days.map((day, dayIndex) => {
                   const totalHeight = 24 * 48 // 48px per hour
                   const dayStart = new Date(day)
                   dayStart.setHours(0, 0, 0, 0)
                   const items = getDayItems(day)
+                  const columnBg = dayIndex % 2 === 0 ? 'bg-white' : 'bg-gray-100'
 
                   return (
-                    <div key={day.toISOString()} className="relative flex-1 min-w-[200px] border-r border-gray-100" style={{ height: totalHeight }}>
+                    <div key={day.toISOString()} className={`relative flex-1 min-w-[200px] border-r border-gray-100 ${columnBg}`} style={{ height: totalHeight }}>
                       {/* hour grid lines */}
                       {hours.map(h => (
                         <div key={h} className="h-12 border-t border-gray-100" />
